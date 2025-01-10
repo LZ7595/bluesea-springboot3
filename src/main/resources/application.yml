@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: backend
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/BlueSea
+    username: root
+    password: root
+  server:
+    port: 8080
+    servlet:
+      context-path: /
+  mail:
+    host: smtp.qq.com
+    username: 2567407595@qq.com
+    password: jwfteykhexkpebbg
+    port: 465
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          ssl:
+            enable: true
+          socketFactory:
+            class: javax.net.ssl.SSLSocketFactory
