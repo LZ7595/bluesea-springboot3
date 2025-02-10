@@ -1,7 +1,6 @@
 package com.example.backend.Service;
 
 import com.example.backend.Entity.Enum.LoginType;
-import com.example.backend.Entity.Result;
 import com.example.backend.Entity.User;
 import org.springframework.http.ResponseEntity;
 

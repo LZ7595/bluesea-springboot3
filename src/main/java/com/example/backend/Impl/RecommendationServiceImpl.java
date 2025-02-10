@@ -1,12 +1,11 @@
 package com.example.backend.Impl;
 
+import com.example.backend.Dao.ProductImageMapper;
 import com.example.backend.Dao.ProductMapper;
 import com.example.backend.Dao.RecommendationMapper;
-import com.example.backend.Entity.FlashSale;
-import com.example.backend.Entity.Product;
-import com.example.backend.Entity.Recommendation;
-import com.example.backend.Entity.ProductResponse;
+import com.example.backend.Entity.*;
 import com.example.backend.Service.RecommendationService;
+import com.example.backend.Utils.PromotionDiscountCalculator;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -30,6 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -40,6 +40,8 @@ public class RecommendationServiceImpl implements RecommendationService {
 
     @Autowired
     private ProductMapper productMapper;
+    @Autowired
+    private ProductImageMapper productImageMapper;
     @Autowired
     private RecommendationMapper recommendationMapper;
 
@@ -64,7 +66,7 @@ public class RecommendationServiceImpl implements RecommendationService {
         for (Product product : allProducts) {
             Document doc = new Document();
             doc.add(new TextField("product_id", String.valueOf(product.getProduct_id()), Field.Store.YES));
-            doc.add(new TextField("description", product.getDescription(), Field.Store.YES));
+            doc.add(new TextField("description", product.getProduct_description(), Field.Store.YES));
             doc.add(new TextField("product_name", product.getProduct_name(), Field.Store.YES));
             writer.addDocument(doc);
         }
@@ -81,10 +83,10 @@ public class RecommendationServiceImpl implements RecommendationService {
         QueryParser parser = new QueryParser("description", analyzer);
         Query query = null;
         try {
-            query = parser.parse(targetProduct.getDescription());
-            logger.info("Generated query from target product description: {}", targetProduct.getDescription());
+            query = parser.parse(targetProduct.getProduct_description());
+            logger.info("Generated query from target product description: {}", targetProduct.getProduct_description());
         } catch (ParseException e) {
-            logger.error("Failed to parse query from target product description: {}", targetProduct.getDescription(), e);
+            logger.error("Failed to parse query from target product description: {}", targetProduct.getProduct_description(), e);
             throw new RuntimeException(e);
         }
 
@@ -99,7 +101,7 @@ public class RecommendationServiceImpl implements RecommendationService {
                 continue;
             }
             Product product = productMapper.getProductById(id);
-            if (product!= null) {
+            if (product != null) {
                 recommendedProductsByDescription.add(product);
             } else {
                 logger.warn("Product with id {} not found in the database.", id);
@@ -128,7 +130,7 @@ public class RecommendationServiceImpl implements RecommendationService {
                 continue;
             }
             Product product = productMapper.getProductById(id);
-            if (product!= null) {
+            if (product != null) {
                 recommendedProductsByName.add(product);
             } else {
                 logger.warn("Product with id {} not found in the database.", id);
@@ -143,7 +145,7 @@ public class RecommendationServiceImpl implements RecommendationService {
         List<Product> finalRecommendations = new ArrayList<>();
         for (Recommendation recommendation : recommendations) {
             Product product = productMapper.getProductById(recommendation.getProductId());
-            if (product!= null) {
+            if (product != null) {
                 finalRecommendations.add(product);
             } else {
                 logger.warn("Product with id {} not found in the database, referenced in recommendation table.", recommendation.getProductId());
@@ -172,13 +174,24 @@ public class RecommendationServiceImpl implements RecommendationService {
             // 转换为 ProductResponse 列表
             List<ProductResponse> topNRecommendationsInfo = topNRecommendations.stream()
                     .map(product -> {
-                        FlashSale flashSale = productMapper.getFlashSaleByProductId(product.getProduct_id());
+                        // 获取产品ID
+                        Long productId = product.getProduct_id();
+                        if (productId == null) {
+                            // 处理产品ID为空的情况
+                            return null; // 或者抛出异常，具体取决于您的需求
+                        }
+                        ProductImage mainImage = productImageMapper.getProductMainImageByProductId(productId);
+                        product.setProduct_main_image(mainImage.getImage_url());
+                        ProductPromotion flashSale = productMapper.getFlashSaleByProductId(productId);
+                        if (flashSale != null) {
+                            BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(flashSale);
+                            // 将计算得到的折扣价格设置到 ProductPromotion 对象中
+                            flashSale.setDiscount_price(discountPrice);
+                        }
+                        // 创建 ProductResponse 对象并设置相关信息
                         return new ProductResponse(product, flashSale);
                     })
                     .collect(Collectors.toList());
-
-            System.out.println("Top " + topN + " recommended products: " + topNRecommendationsInfo);
-
             return topNRecommendationsInfo;
         } else if (length < topN) {
             // 当推荐结果数量不足 topN 时，从 allProducts 中随机选取产品添加到推荐列表
@@ -192,13 +205,28 @@ public class RecommendationServiceImpl implements RecommendationService {
             // 转换为 ProductResponse 列表
             List<ProductResponse> topNRecommendationsInfo = distinctRecommendations.stream()
                     .map(product -> {
-                        FlashSale flashSale = productMapper.getFlashSaleByProductId(product.getProduct_id());
-                        return new ProductResponse(product, flashSale);
+                        // 获取产品ID
+                        Long productId = product.getProduct_id();
+                        if (productId == null) {
+                            // 处理产品ID为空的情况
+                            return null; // 或者抛出异常，具体取决于您的需求
+                        }
+                        ProductImage mainImage = productImageMapper.getProductMainImageByProductId(productId);
+                        product.setProduct_main_image(mainImage.getImage_url());
+                        // 获取闪购信息
+                        ProductPromotion flashSalePromotion = productMapper.getFlashSaleByProductId(productId);
+                        if (flashSalePromotion != null) {
+                            // 调用工具类计算折扣价格
+                            BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(flashSalePromotion);
+
+                            // 将计算得到的折扣价格设置到 ProductPromotion 对象中
+                            flashSalePromotion.setDiscount_price(discountPrice);
+                        }
+                        // 创建 ProductResponse 对象并设置相关信息
+                        return new ProductResponse(product, flashSalePromotion);
                     })
+                    .filter(response -> response != null) // 过滤掉可能为 null 的元素
                     .collect(Collectors.toList());
-
-            System.out.println("Top " + topN + " recommended products: " + topNRecommendationsInfo);
-
             return topNRecommendationsInfo;
         }
 

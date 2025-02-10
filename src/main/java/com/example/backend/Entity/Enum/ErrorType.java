@@ -22,7 +22,12 @@ public enum ErrorType {
     //验证码
     CODE_SENDING_FAILED("验证码发送失败", 1021),
     CODE_INSERT_FAILED("验证码存储失败", 1022),
-    CODE_INVALID_FAILED("验证码错误", 1023);
+    CODE_INVALID_FAILED("验证码错误", 1023),
+
+    //购物车
+    ITEM_ALREADY_IN_CART("该商品已在购物车中",2011),
+    CART_ADD_FAILED("添加购物车失败", 2012),
+    CART_SELECT_FAILED("获取购物车失败", 2013);
 
     private  int errorcode;
     private  String errormsg;

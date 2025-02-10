@@ -3,7 +3,7 @@ spring:
     name: backend
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/BlueSea
+    url: jdbc:mysql://localhost:3306/blueseaplus
     username: root
     password: root
   server:

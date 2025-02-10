@@ -5,12 +5,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
-public class UserInfo {
-    private String username;
+@AllArgsConstructor
+public class UserDetails {
+    private Integer id;
+    private Integer userId;
     private java.sql.Date birthday;
     private String gender;
     private String avatar;
-    private String role;
 }

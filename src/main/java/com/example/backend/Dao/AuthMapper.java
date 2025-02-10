@@ -15,7 +15,7 @@ public interface AuthMapper {
     @Select("SELECT * FROM user WHERE username = #{username}")
     Boolean selectUsernameOne(String username);
 
-    @Select("<script>SELECT username , password , role FROM user WHERE username = #{info} OR email = #{info}</script>")
+    @Select("<script>SELECT username , password , role , id FROM user WHERE username = #{info} OR email = #{info}</script>")
     User LoginVerification(String info);
 
     @Insert("INSERT INTO user (email, password, username) VALUES (#{email}, #{password}, #{username})")

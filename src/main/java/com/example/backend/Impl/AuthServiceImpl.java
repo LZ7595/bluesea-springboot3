@@ -3,9 +3,7 @@ package com.example.backend.Impl;
 import com.example.backend.Dao.AuthMapper;
 import com.example.backend.Entity.Enum.LoginType;
 import com.example.backend.Entity.Enum.ErrorType;
-import com.example.backend.Entity.SuccessData;
 import com.example.backend.Entity.User;
-import com.example.backend.Entity.UserInfo;
 import com.example.backend.Service.AuthService;
 import com.example.backend.Utils.Email;
 import com.example.backend.Utils.Encryption;
@@ -116,15 +114,16 @@ public class AuthServiceImpl implements AuthService {
                 if (result != null) {
                     if (Encryption.verifyPassword(user.getPassword(), result.getPassword())) {
                         authMapper.updateLastLoginTime(user.getUsername(), LocalDateTime.now(), "用户密码");
-                        String token = Jwt.generateRefreshToken(user.getUsername(), result.getRole().toString());
+                        String token = Jwt.generateRefreshToken(result.getId(),user.getUsername(), result.getRole().toString());
                         // 创建 HttpOnly 的 Cookie
-                        ResponseCookie cookie = createHttpOnlyCookie(token);
-                        UserInfo userInfo = new UserInfo(user.getUsername(),result.getRole(),token);
+                        ResponseCookie cookie1 = createHttpOnlyCookie(token);
+                        ResponseCookie cookie2 = createCookie(token);
                         HttpHeaders headers = new HttpHeaders();
-                        headers.add(HttpHeaders.SET_COOKIE, cookie.toString());
+                        headers.add(HttpHeaders.SET_COOKIE, cookie1.toString());
+                        headers.add(HttpHeaders.SET_COOKIE, cookie2.toString());
                         return ResponseEntity.ok()
                                 .headers(headers)
-                                .body(new SuccessData("登录成功", userInfo));
+                                .body(token);
                     } else {
                         return ResponseEntity.status(401)
                                 .body(ErrorType.PASSWORD_ERROR.toErrorResponse());
@@ -142,15 +141,16 @@ public class AuthServiceImpl implements AuthService {
                         clearCodeFromDatabase(user.getEmail());
                         User result1 = authMapper.LoginVerification(user.getEmail());
                         authMapper.updateLastLoginTime(user.getEmail(), LocalDateTime.now(), "邮箱验证");
-                        String token = Jwt.generateRefreshToken(result1.getUsername(), result1.getRole().toString());
+                        String token = Jwt.generateRefreshToken(result1.getId(),result1.getUsername(), result1.getRole().toString());
                         // 创建 HttpOnly 的 Cookie
-                        ResponseCookie cookie = createHttpOnlyCookie(token);
-                        UserInfo userInfo = new UserInfo(result1.getUsername(),result1.getRole(),token);
+                        ResponseCookie cookie1 = createHttpOnlyCookie(token);
+                        ResponseCookie cookie2 = createCookie(token);
                         HttpHeaders headers = new HttpHeaders();
-                        headers.add(HttpHeaders.SET_COOKIE, cookie.toString());
+                        headers.add(HttpHeaders.SET_COOKIE, cookie1.toString());
+                        headers.add(HttpHeaders.SET_COOKIE, cookie2.toString());
                         return ResponseEntity.ok()
                                 .headers(headers)
-                                .body(new SuccessData("登录成功", userInfo));
+                                .body(token);
                     } else {
                         return ResponseEntity.status(401)
                                 .body(ErrorType.CODE_INVALID_FAILED.toErrorResponse());
@@ -166,15 +166,16 @@ public class AuthServiceImpl implements AuthService {
                     if (result2 != null) {
                         if (Encryption.verifyPassword(user.getPassword(), result2.getPassword())) {
                             authMapper.updateLastLoginTime(user.getEmail(), LocalDateTime.now(), "邮箱密码");
-                            String token = Jwt.generateRefreshToken(result2.getUsername(), result2.getRole().toString());
+                            String token = Jwt.generateRefreshToken(result2.getId(),result2.getUsername(), result2.getRole().toString());
                             // 创建 HttpOnly 的 Cookie
-                            ResponseCookie cookie = createHttpOnlyCookie(token);
-                            UserInfo userInfo = new UserInfo(result2.getUsername(),result2.getRole(),token);
+                            ResponseCookie cookie1 = createHttpOnlyCookie(token);
+                            ResponseCookie cookie2 = createCookie(token);
                             HttpHeaders headers = new HttpHeaders();
-                            headers.add(HttpHeaders.SET_COOKIE, cookie.toString());
+                            headers.add(HttpHeaders.SET_COOKIE, cookie1.toString());
+                            headers.add(HttpHeaders.SET_COOKIE, cookie2.toString());
                             return ResponseEntity.ok()
                                     .headers(headers)
-                                    .body(new SuccessData("登录成功", userInfo));
+                                    .body(token);
                         } else {
                             return ResponseEntity.status(401)
                                     .body(ErrorType.PASSWORD_ERROR.toErrorResponse());
@@ -203,13 +204,21 @@ public class AuthServiceImpl implements AuthService {
                 .path("/")
                 .build();
     }
+    private ResponseCookie createCookie(String token) {
+        return ResponseCookie.from("token", token)
+                .httpOnly(false)
+                .maxAge(Jwt.TOKEN_EXPIRATION_TIME / 1000) // 转换为秒
+                .path("/")
+                .build();
+    }
 
 
     // 登出时清除刷新令牌
     public ResponseEntity<?> logoutUser() {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.SET_COOKIE, "jwtToken=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; HttpOnly");
-        return ResponseEntity.ok().body("登出成功");
+        headers.add(HttpHeaders.SET_COOKIE, "token=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/;");
+        return ResponseEntity.ok().headers(headers).body("登出成功");
     }
 
     private void clearCodeFromDatabase(String email) {
