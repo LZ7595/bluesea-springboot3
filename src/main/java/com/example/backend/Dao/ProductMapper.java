@@ -2,7 +2,6 @@ package com.example.backend.Dao;
 
 import com.example.backend.Entity.Product;
 import com.example.backend.Entity.ProductPromotion;
-import com.example.backend.Entity.ProductResponse;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -24,7 +23,7 @@ public interface ProductMapper {
             "JOIN product p ON pp.product_id = p.product_id " +
             "WHERE pp.product_id = #{id} " +
             "AND NOW() BETWEEN pp.start_time AND pp.end_time ")
-    ProductPromotion getFlashSaleByProductId(Long id);
+    List<ProductPromotion> getFlashSaleByProductId(Long id);
 
     @Select("SELECT * FROM product ORDER BY create_time DESC LIMIT #{num}")
     List<Product> getNewList(int num);

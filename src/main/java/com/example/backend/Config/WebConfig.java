@@ -1,4 +1,4 @@
-package com.example.backend.config;
+package com.example.backend.Config;
 
 import com.example.backend.Utils.CookieExpirationInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;

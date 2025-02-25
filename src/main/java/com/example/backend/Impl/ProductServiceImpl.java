@@ -51,6 +51,7 @@ public class ProductServiceImpl implements ProductService {
         }
 
         List<ProductPromotion> promotions = productPromotionMapper.getProductPromotionsByProductId(productId);
+        System.out.println(promotions);
         // 遍历商品促销列表，根据促销类型计算折扣价格
         for (ProductPromotion promotion : promotions) {
             BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(promotion);
@@ -133,21 +134,34 @@ public class ProductServiceImpl implements ProductService {
                         // 处理产品ID为空的情况
                         return null;
                     }
+
                     ProductImage mainImage = productImageMapper.getProductMainImageByProductId(productId);
                     product.setProduct_main_image(mainImage.getImage_url());
-                    ProductPromotion flashSale = productMapper.getFlashSaleByProductId(productId);
-                    if (flashSale != null) {
-                        BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(flashSale);
-                        // 将计算得到的折扣价格设置到 ProductPromotion 对象中
-                        flashSale.setDiscount_price(discountPrice);
+
+                    ProductPromotion cheapestPromotion = null;
+                    BigDecimal lowestDiscountPrice = null;
+                    List<ProductPromotion> flashSale = productMapper.getFlashSaleByProductId(productId);
+                    for (ProductPromotion promotion : flashSale) {
+                        if (promotion != null) {
+                            System.out.println("Flash sale found for product ID " + promotion);
+                            BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(promotion);
+                            // 将计算得到的折扣价格设置到 ProductPromotion 对象中
+                            promotion.setDiscount_price(discountPrice);
+
+                            if (lowestDiscountPrice == null || discountPrice.compareTo(lowestDiscountPrice) < 0) {
+                                lowestDiscountPrice = discountPrice;
+                                cheapestPromotion = promotion;
+                            }
+                        }
                     }
                     // 创建 ProductResponse 对象并设置相关信息
-                    return new ProductResponse(product, flashSale);
+                    return new ProductResponse(product, cheapestPromotion);
                 }).collect(Collectors.toList());
                 ProductResponsePageResult productResponsePageResult = new ProductResponsePageResult(responseList,total);
                 return ResponseEntity.ok().body(productResponsePageResult);
             }
         } catch (Exception e) {
+            System.out.println("Error occurred while fetching apple phone products: " + e);
             return ResponseEntity.status(500).body(null);
         }
         return ResponseEntity.status(404).body(null);
@@ -169,13 +183,25 @@ public class ProductServiceImpl implements ProductService {
                     }
                     ProductImage mainImage = productImageMapper.getProductMainImageByProductId(productId);
                     product.setProduct_main_image(mainImage.getImage_url());
-                    ProductPromotion flashSale = productMapper.getFlashSaleByProductId(productId);
-                    if (flashSale != null) {
-                        BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(flashSale);
-                        // 将计算得到的折扣价格设置到 ProductPromotion 对象中
-                        flashSale.setDiscount_price(discountPrice);
+
+                    ProductPromotion cheapestPromotion = null;
+                    BigDecimal lowestDiscountPrice = null;
+                    List<ProductPromotion> flashSale = productMapper.getFlashSaleByProductId(productId);
+                    for (ProductPromotion promotion : flashSale) {
+                        if (promotion != null) {
+                            System.out.println("Flash sale found for product ID " + promotion);
+                            BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(promotion);
+                            // 将计算得到的折扣价格设置到 ProductPromotion 对象中
+                            promotion.setDiscount_price(discountPrice);
+
+                            if (lowestDiscountPrice == null || discountPrice.compareTo(lowestDiscountPrice) < 0) {
+                                lowestDiscountPrice = discountPrice;
+                                cheapestPromotion = promotion;
+                            }
+                        }
                     }
-                    return new ProductResponse(product, flashSale);
+
+                    return new ProductResponse(product, cheapestPromotion);
                 }).collect(Collectors.toList());
                 ProductResponsePageResult productResponsePageResult = new ProductResponsePageResult(responseList,total);
                 return ResponseEntity.ok().body(productResponsePageResult);
@@ -201,13 +227,25 @@ public class ProductServiceImpl implements ProductService {
                     }
                     ProductImage mainImage = productImageMapper.getProductMainImageByProductId(productId);
                     product.setProduct_main_image(mainImage.getImage_url());
-                    ProductPromotion flashSale = productMapper.getFlashSaleByProductId(productId);
-                    if (flashSale != null) {
-                        BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(flashSale);
-                        // 将计算得到的折扣价格设置到 ProductPromotion 对象中
-                        flashSale.setDiscount_price(discountPrice);
+
+                    ProductPromotion cheapestPromotion = null;
+                    BigDecimal lowestDiscountPrice = null;
+                    List<ProductPromotion> flashSale = productMapper.getFlashSaleByProductId(productId);
+                    for (ProductPromotion promotion : flashSale) {
+                        if (promotion != null) {
+                            System.out.println("Flash sale found for product ID " + promotion);
+                            BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(promotion);
+                            // 将计算得到的折扣价格设置到 ProductPromotion 对象中
+                            promotion.setDiscount_price(discountPrice);
+
+                            if (lowestDiscountPrice == null || discountPrice.compareTo(lowestDiscountPrice) < 0) {
+                                lowestDiscountPrice = discountPrice;
+                                cheapestPromotion = promotion;
+                            }
+                        }
                     }
-                    return new ProductResponse(product, flashSale);
+
+                    return new ProductResponse(product, cheapestPromotion);
                 }).collect(Collectors.toList());
                 ProductResponsePageResult productResponsePageResult = new ProductResponsePageResult(responseList,total);
                 return ResponseEntity.ok().body(productResponsePageResult);
@@ -245,13 +283,25 @@ public class ProductServiceImpl implements ProductService {
                     }
                     ProductImage mainImage = productImageMapper.getProductMainImageByProductId(productId);
                     product.setProduct_main_image(mainImage.getImage_url());
-                    ProductPromotion flashSale = productMapper.getFlashSaleByProductId(productId);
-                    if (flashSale != null) {
-                        BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(flashSale);
-                        // 将计算得到的折扣价格设置到 ProductPromotion 对象中
-                        flashSale.setDiscount_price(discountPrice);
+
+                    ProductPromotion cheapestPromotion = null;
+                    BigDecimal lowestDiscountPrice = null;
+                    List<ProductPromotion> flashSale = productMapper.getFlashSaleByProductId(productId);
+                    for (ProductPromotion promotion : flashSale) {
+                        if (promotion != null) {
+                            System.out.println("Flash sale found for product ID " + promotion);
+                            BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(promotion);
+                            // 将计算得到的折扣价格设置到 ProductPromotion 对象中
+                            promotion.setDiscount_price(discountPrice);
+
+                            if (lowestDiscountPrice == null || discountPrice.compareTo(lowestDiscountPrice) < 0) {
+                                lowestDiscountPrice = discountPrice;
+                                cheapestPromotion = promotion;
+                            }
+                        }
                     }
-                    return new ProductResponse(product, flashSale);
+                   
+                    return new ProductResponse(product, cheapestPromotion);
                 }).collect(Collectors.toList());
                 ProductResponsePageResult productResponsePageResult = new ProductResponsePageResult(responseList,total);
                 return ResponseEntity.ok().body(productResponsePageResult);

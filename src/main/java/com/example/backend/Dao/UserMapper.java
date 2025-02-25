@@ -1,5 +1,6 @@
 package com.example.backend.Dao;
 
+import com.example.backend.Entity.User;
 import com.example.backend.Entity.UserInfo;
 import com.example.backend.Entity.UserSecurity;
 import org.apache.ibatis.annotations.Mapper;
@@ -11,6 +12,9 @@ import java.util.Optional;
 
 @Mapper
 public interface UserMapper {
+
+    @Select("SELECT * FROM user WHERE id = #{id}")
+    User findById(int id);
 
     @Select("SELECT u.username, ud.birthday, ud.gender, ud.avatar, u.role " +
             "FROM user u " +
@@ -33,20 +37,21 @@ public interface UserMapper {
     @Select("SELECT id , username , phone , email FROM user WHERE id = #{userId}")
     UserSecurity getSecurityInfo(Integer userId);
 
-    @Update("UPDATE user SET code = NULL, codeExpiration = NULL WHERE id = '${userId}'")
+    @Update("UPDATE user SET code = NULL, codeExpiration = NULL WHERE id = #{userId}")
     void clearCode(Integer userId);
 
-    @Update("UPDATE user SET code = NULL, codeExpiration = NULL WHERE codeExpiration < '${now}'")
+    @Update("UPDATE user SET code = NULL, codeExpiration = NULL WHERE codeExpiration < #{now}")
     void deleteExpiredCodes(LocalDateTime now);
 
-    @Update("UPDATE user SET code = #{code}, codeExpiration = #{expirationTime} WHERE email = '${email}'")
+    @Update("UPDATE user SET code = #{code}, codeExpiration = #{expirationTime} WHERE email = #{email}")
     int updateEmailCode(String code, LocalDateTime expirationTime, String email);
 
-    @Update("UPDATE user SET code = #{code}, codeExpiration = #{expirationTime} WHERE phone = '${phone}'")
+    @Update("UPDATE user SET code = #{code}, codeExpiration = #{expirationTime} WHERE phone = #{phone}")
     int updatePhoneCode(String code, LocalDateTime expirationTime, String phone);
 
     @Select("SELECT COUNT(*) FROM user WHERE email = #{email}")
     int selectEmail(String email);
+
     @Select("SELECT COUNT(*) FROM user WHERE phone = #{phone}")
     int selectPhone(String phone);
 
@@ -61,4 +66,15 @@ public interface UserMapper {
 
     @Update("UPDATE user SET email = #{email} WHERE id = #{userId}")
     int updateEmail(Integer userId, String email);
+
+    // 获取用户密码
+    @Select("SELECT password FROM user WHERE id = #{userId}")
+    String getPasswordById(Integer userId);
+
+    // 修改用户密码
+    @Update("UPDATE user SET password = #{newPassword} WHERE id = #{userId}")
+    int updatePassword(Integer userId, String newPassword);
+
+    @Select("SELECT * FROM user WHERE id = #{userId}")
+    User searchUserByUserId(Integer userId);
 }

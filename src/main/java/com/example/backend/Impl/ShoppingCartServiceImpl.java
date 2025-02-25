@@ -54,12 +54,29 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
                         ProductImage mainImage = productImageMapper.getProductMainImageByProductId(productId);
                         cartProduct.setProduct_main_image(mainImage.getImage_url());
 
-                        ProductPromotion flashSale = productMapper.getFlashSaleByProductId(productId);
-                        if (flashSale != null) {
-                            BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(flashSale);
-                            cartProduct.setPrice(discountPrice);
-                        }
+                        ProductPromotion cheapestPromotion = null;
+                        BigDecimal lowestDiscountPrice = null;
+                        List<ProductPromotion> flashSale = productMapper.getFlashSaleByProductId(productId);
+                        for (ProductPromotion promotion : flashSale) {
+                            if (promotion != null) {
+                                System.out.println("Flash sale found for product ID " + promotion);
+                                BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(promotion);
+                                // 将计算得到的折扣价格设置到 ProductPromotion 对象中
+                                promotion.setDiscount_price(discountPrice);
 
+                                if (lowestDiscountPrice == null || discountPrice.compareTo(lowestDiscountPrice) < 0) {
+                                    lowestDiscountPrice = discountPrice;
+                                    cheapestPromotion = promotion;
+                                }
+                            }
+                        }
+                        if (cheapestPromotion != null) {
+                            System.out.println("最便宜的促销活动: " + cheapestPromotion);
+                            System.out.println("最低折扣价格: " + lowestDiscountPrice);
+                        } else {
+                            System.out.println("未找到有效的促销活动。");
+                        }
+                        cartProduct.setDiscount_price(lowestDiscountPrice);
                         return cartProduct;
                     }
             ).collect(Collectors.toList());

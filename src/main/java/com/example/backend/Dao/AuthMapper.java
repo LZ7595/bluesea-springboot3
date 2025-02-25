@@ -9,8 +9,8 @@ import java.time.LocalDateTime;
 @Mapper
 public interface AuthMapper {
 
-    @Select("SELECT * FROM user WHERE email = #{email}")
-    Boolean selectEmailOne(String email);
+    @Select("SELECT COUNT(*) FROM user WHERE email = '${email}'")
+    int selectEmailOne(String email);
 
     @Select("SELECT * FROM user WHERE username = #{username}")
     Boolean selectUsernameOne(String username);

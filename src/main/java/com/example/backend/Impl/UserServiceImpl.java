@@ -1,10 +1,12 @@
 package com.example.backend.Impl;
 
-
 import com.example.backend.Entity.Enum.ErrorType;
+import com.example.backend.Entity.User;
 import com.example.backend.Entity.UserInfo;
 import com.example.backend.Entity.UserSecurity;
 import com.example.backend.Utils.Email;
+import com.example.backend.Utils.Encryption;
+import com.example.backend.Utils.SmsSender;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,16 +39,16 @@ public class UserServiceImpl implements UserService {
     public ResponseEntity<?> updateUserInfo(Integer userId, String username, String gender, Date birthday) {
         try {
             Optional<UserInfo> userli = userMapper.getUserInfoById(userId);
-            if (userli.get().getUsername() == username && userli.get().getBirthday() == birthday && userli.get().getGender() == gender) {
+            if (userli.get().getUsername().equals(username) && userli.get().getBirthday().equals(birthday) && userli.get().getGender().equals(gender)) {
                 return ResponseEntity.badRequest().body("未做任何修改");
             }
-            if (userli.get().getUsername() != username) {
+            if (!userli.get().getUsername().equals(username)) {
                 userMapper.updateUsername(userId, username);
             }
-            if (userli.get().getBirthday() != birthday) {
+            if (!userli.get().getBirthday().equals(birthday)) {
                 userMapper.updateBirthday(userId, new java.sql.Date(birthday.getTime()));
             }
-            if (userli.get().getGender() != gender) {
+            if (!userli.get().getGender().equals(gender)) {
                 userMapper.updateGender(userId, gender);
             }
             return ResponseEntity.ok("修改成功");
@@ -91,23 +93,79 @@ public class UserServiceImpl implements UserService {
                         codeExpiration.put(info, expirationTime);
                         System.out.println(info + code);
                         emailsend.sendEmail(info, code, "换绑验证");
+                        ResponseEntity<?> storeResult = storeCodeInDatabase(info, code, expirationTime, type);
+                        if (storeResult.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
+                            return storeResult;
+                        }
                     }
                 }
-            } else if (type.equals("changPhone")) {
+            } else if (type.equals("changePhone")) {
                 if (num == 0) {
-                    //发送手机验证码操作
-//                    ResponseEntity<?> storeResult = storeCodeInDatabase(info, code, expirationTime, type);
-//                    if (storeResult.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
-//                        return storeResult;
-//                    }
+                    String code = generateCode();
+                    verificationCodes.put(info, code);
+                    LocalDateTime expirationTime = LocalDateTime.now().plusSeconds(CODE_EXPIRATION_TIME / 1000);
+                    codeExpiration.put(info, expirationTime);
+                    boolean isSent = SmsSender.sendSms(info, code);
+                    if (!isSent) {
+                        return ResponseEntity.status(500).body(ErrorType.CODE_SENDING_FAILED.toErrorResponse());
+                    }
+                    ResponseEntity<?> storeResult = storeCodeInDatabase(info, code, expirationTime, type);
+                    if (storeResult.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
+                        return storeResult;
+                    }
                 } else if (num == 1) {
                     Integer isPhoneRegistered = userMapper.selectPhone(info);
                     if (isPhoneRegistered == 1) {
                         return ResponseEntity.status(404)
                                 .body(ErrorType.EMAIL_REGISTERED.toErrorResponse());
                     } else {
-                        //发送手机验证码操作
+                        String code = generateCode();
+                        verificationCodes.put(info, code);
+                        LocalDateTime expirationTime = LocalDateTime.now().plusSeconds(CODE_EXPIRATION_TIME / 1000);
+                        codeExpiration.put(info, expirationTime);
+                        boolean isSent = SmsSender.sendSms(info, code);
+                        if (!isSent) {
+                            return ResponseEntity.status(500).body(ErrorType.CODE_SENDING_FAILED.toErrorResponse());
+                        }
+                        ResponseEntity<?> storeResult = storeCodeInDatabase(info, code, expirationTime, type);
+                        if (storeResult.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
+                            return storeResult;
+                        }
                     }
+                }
+            } else if (type.equals("changePasswordByEmail")) {
+                Integer isEmailRegistered = userMapper.selectEmail(info);
+                if (isEmailRegistered != 1) {
+                    return ResponseEntity.status(404)
+                            .body(ErrorType.EMAIL_NOT_REGISTERED.toErrorResponse());
+                }
+                String code = generateCode();
+                verificationCodes.put(info, code);
+                LocalDateTime expirationTime = LocalDateTime.now().plusSeconds(CODE_EXPIRATION_TIME / 1000);
+                codeExpiration.put(info, expirationTime);
+                System.out.println(info + code);
+                emailsend.sendEmail(info, code, "修改密码验证");
+                ResponseEntity<?> storeResult = storeCodeInDatabase(info, code, expirationTime, type);
+                if (storeResult.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
+                    return storeResult;
+                }
+            } else if (type.equals("changePasswordByPhone")) {
+                Integer isPhoneRegistered = userMapper.selectPhone(info);
+                if (isPhoneRegistered != 1) {
+                    return ResponseEntity.status(404)
+                            .body(ErrorType.PHONE_NOT_REGISTERED.toErrorResponse());
+                }
+                String code = generateCode();
+                verificationCodes.put(info, code);
+                LocalDateTime expirationTime = LocalDateTime.now().plusSeconds(CODE_EXPIRATION_TIME / 1000);
+                codeExpiration.put(info, expirationTime);
+                boolean isSent = SmsSender.sendSms(info, code);
+                if (!isSent) {
+                    return ResponseEntity.status(500).body(ErrorType.CODE_SENDING_FAILED.toErrorResponse());
+                }
+                ResponseEntity<?> storeResult = storeCodeInDatabase(info, code, expirationTime, type);
+                if (storeResult.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
+                    return storeResult;
                 }
             }
             return ResponseEntity.ok("验证码已发送");
@@ -136,6 +194,18 @@ public class UserServiceImpl implements UserService {
                 if (rowsUpdated == 0) {
                     return ResponseEntity.status(404)
                             .body(ErrorType.EMAIL_NOT_REGISTERED.toErrorResponse());
+                }
+            } else if (type.equals("changePasswordByEmail")) {
+                Integer rowsUpdated = userMapper.updateEmailCode(code, expirationTime, info);
+                if (rowsUpdated == 0) {
+                    return ResponseEntity.status(404)
+                            .body(ErrorType.EMAIL_NOT_REGISTERED.toErrorResponse());
+                }
+            } else if (type.equals("changePasswordByPhone")) {
+                Integer rowsUpdated = userMapper.updatePhoneCode(code, expirationTime, info);
+                if (rowsUpdated == 0) {
+                    return ResponseEntity.status(404)
+                            .body(ErrorType.PHONE_NOT_REGISTERED.toErrorResponse());
                 }
             }
 
@@ -170,7 +240,7 @@ public class UserServiceImpl implements UserService {
                 if (!codeValid) {
                     return ResponseEntity.status(404)
                             .body(ErrorType.CODE_INVALID_FAILED.toErrorResponse());
-                }else {
+                } else {
                     if (type.equals("changeEmail")) {
                         userMapper.updateEmail(userId, info);
                     } else if (type.equals("changePhone"))
@@ -189,7 +259,6 @@ public class UserServiceImpl implements UserService {
         }
         return null;
     }
-
 
     @Override
     public boolean validateCode(String info, String code) {
@@ -221,5 +290,116 @@ public class UserServiceImpl implements UserService {
         verificationCodes.keySet().removeIf(key -> codeExpiration.get(key) == null);
         // 清除数据库中的过期验证码
         userMapper.deleteExpiredCodes(now);
+    }
+
+    @Override
+    public ResponseEntity<?> confirmChangePasswordByOldPassword(Integer userId, String oldPassword) {
+        try {
+            String storedPassword = userMapper.getPasswordById(userId);
+            if (storedPassword != null && Encryption.verifyPassword(oldPassword, storedPassword)) {
+                return ResponseEntity.ok("旧密码验证通过");
+            }
+            return ResponseEntity.status(404).body(ErrorType.OLD_PASSWORD_INCORRECT.toErrorResponse());
+        } catch (Exception e) {
+            System.err.println("验证旧密码时发生异常: " + e.getMessage());
+            return ResponseEntity.status(500).body(ErrorType.PASSWORD_VERIFICATION_FAILED.toErrorResponse());
+        }
+    }
+
+    @Override
+    public ResponseEntity<?> confirmChangePasswordByEmail(Integer userId, String email, String code) {
+        try {
+            Integer isEmailRegistered = userMapper.selectEmail(email);
+            if (isEmailRegistered != 1) {
+                return ResponseEntity.status(404).body(ErrorType.EMAIL_NOT_REGISTERED.toErrorResponse());
+            }
+            String storedCode = userMapper.selectEmailCode(email);
+            if (storedCode != null && storedCode.equals(code) && validateCode(email, code)) {
+                return ResponseEntity.ok("邮箱验证通过");
+            }
+            return ResponseEntity.status(404).body(ErrorType.CODE_INVALID_FAILED.toErrorResponse());
+        } catch (Exception e) {
+            System.err.println("验证邮箱验证码时发生异常: " + e.getMessage());
+            return ResponseEntity.status(500).body(ErrorType.CODE_VERIFICATION_FAILED.toErrorResponse());
+        }
+    }
+
+    @Override
+    public ResponseEntity<?> confirmChangePasswordByPhone(Integer userId, String phone, String code) {
+        try {
+            Integer isPhoneRegistered = userMapper.selectPhone(phone);
+            if (isPhoneRegistered != 1) {
+                return ResponseEntity.status(404).body(ErrorType.PHONE_NOT_REGISTERED.toErrorResponse());
+            }
+            String storedCode = userMapper.selectPhoneCode(phone);
+            if (storedCode != null && storedCode.equals(code) && validateCode(phone, code)) {
+                return ResponseEntity.ok("手机验证通过");
+            }
+            return ResponseEntity.status(404).body(ErrorType.CODE_INVALID_FAILED.toErrorResponse());
+        } catch (Exception e) {
+            System.err.println("验证手机验证码时发生异常: " + e.getMessage());
+            return ResponseEntity.status(500).body(ErrorType.CODE_VERIFICATION_FAILED.toErrorResponse());
+        }
+    }
+
+    @Override
+    public ResponseEntity<?> changePasswordByOldPassword(Integer userId, String oldPassword, String newPassword) {
+        ResponseEntity<?> confirmResult = confirmChangePasswordByOldPassword(userId, oldPassword);
+        if (confirmResult.getStatusCode() == HttpStatus.OK) {
+            try {
+                String encryptedNewPassword = Encryption.encryptPassword(newPassword);
+                userMapper.updatePassword(userId, encryptedNewPassword);
+                return ResponseEntity.ok("密码修改成功");
+            } catch (Exception e) {
+                System.err.println("修改密码时发生异常: " + e.getMessage());
+                return ResponseEntity.status(500).body(ErrorType.PASSWORD_UPDATE_FAILED.toErrorResponse());
+            }
+        }
+        return confirmResult;
+    }
+
+    @Override
+    public ResponseEntity<?> changePasswordByEmail(Integer userId, String email, String code, String newPassword) {
+        ResponseEntity<?> confirmResult = confirmChangePasswordByEmail(userId, email, code);
+        if (confirmResult.getStatusCode() == HttpStatus.OK) {
+            try {
+                String encryptedNewPassword = Encryption.encryptPassword(newPassword);
+                userMapper.updatePassword(userId, encryptedNewPassword);
+                return ResponseEntity.ok("密码修改成功");
+            } catch (Exception e) {
+                System.err.println("修改密码时发生异常: " + e.getMessage());
+                return ResponseEntity.status(500).body(ErrorType.PASSWORD_UPDATE_FAILED.toErrorResponse());
+            }
+        }
+        return confirmResult;
+    }
+
+    @Override
+    public ResponseEntity<?> changePasswordByPhone(Integer userId, String phone, String code, String newPassword) {
+        ResponseEntity<?> confirmResult = confirmChangePasswordByPhone(userId, phone, code);
+        if (confirmResult.getStatusCode() == HttpStatus.OK) {
+            try {
+                String encryptedNewPassword = Encryption.encryptPassword(newPassword);
+                userMapper.updatePassword(userId, encryptedNewPassword);
+                return ResponseEntity.ok("密码修改成功");
+            } catch (Exception e) {
+                System.err.println("修改密码时发生异常: " + e.getMessage());
+                return ResponseEntity.status(500).body(ErrorType.PASSWORD_UPDATE_FAILED.toErrorResponse());
+            }
+        }
+        return confirmResult;
+    }
+
+    public ResponseEntity<?> searchUserByUserId(Integer userId){
+        try {
+            User user = userMapper.searchUserByUserId(userId);
+            if (user == null) {
+                return ResponseEntity.status(404).body(null);
+            }
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            System.err.println("查询用户信息时发生异常: " + e.getMessage());
+            return ResponseEntity.status(500).body(null);
+        }
     }
 }

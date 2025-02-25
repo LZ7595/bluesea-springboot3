@@ -9,5 +9,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class Recommendation {
     private Long id;
-    private Long productId;
+    private Long product_id;
 }

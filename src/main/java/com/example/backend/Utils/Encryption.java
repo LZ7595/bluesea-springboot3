@@ -18,4 +18,14 @@ public class Encryption {
     public static boolean verifyPassword(String rawPassword, String encodedPassword) {
         return passwordEncoder.matches(rawPassword, encodedPassword);
     }
+
+    /**
+     * 判断密码是否已经加密
+     * 这里简单假设加密后的密码以 $ 开头
+     * @param password 密码
+     * @return 是否加密
+     */
+    public static boolean isEncrypted(String password) {
+        return password != null && password.startsWith("$2a$10$");
+    }
 }

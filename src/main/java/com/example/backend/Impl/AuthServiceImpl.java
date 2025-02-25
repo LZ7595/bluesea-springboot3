@@ -94,8 +94,12 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public boolean isEmailUsed(String email) {
-        Boolean result = authMapper.selectEmailOne(email);
-        return result != null && result;
+        int result = authMapper.selectEmailOne(email);
+        if (result == 0) {
+            return false;
+        }else {
+            return true;
+        }
     }
 
     @Override

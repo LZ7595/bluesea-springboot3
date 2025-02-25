@@ -74,6 +74,12 @@ public class Jwt {
         return (String) claims.get("role");
     }
 
-
+    public static Integer validateToken(String token) {
+        try {
+            return Integer.parseInt(Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(token).getBody().getSubject());
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
 }

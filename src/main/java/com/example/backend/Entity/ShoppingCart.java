@@ -19,5 +19,6 @@ public class ShoppingCart {
     private Integer stock;
     private Integer quantity;
     private Integer is_selected;
+    private BigDecimal discount_price;
 }
 
