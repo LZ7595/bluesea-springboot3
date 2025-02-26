@@ -15,7 +15,7 @@ import java.util.UUID;
 
 @Service
 public class FileService {
-    @Value("${file.upload-dir}")
+    @Value("${image.storage.directory}")
     private String uploadDir;
 
     // 处理二进制数据的上传方法

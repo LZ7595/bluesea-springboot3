@@ -10,8 +10,16 @@ import com.example.backend.Utils.AssertUtils;
 import com.example.backend.Utils.WebSocketUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -25,6 +33,9 @@ public class MessageService {
     final Integer limitMessagesLength = 6000;
     // 限制用户数量
     final Integer limitUserLength = 300;
+
+    @Value("${image.storage.directory}")
+    private String imageStorageDirectory;
 
     @Autowired
     private MessageDao messageDao;
@@ -72,9 +83,52 @@ public class MessageService {
         message.setHandle(UUID.randomUUID().toString());
         message.setIs_read("0");
         message.setCreate_time(LocalDateTime.now());
+
+        // 设置消息类型，如果前端未传递，默认设为 text
+        if (message.getType() == null) {
+            message.setType("text");
+        }
+
+        // 处理图片消息
+        if ("image".equals(message.getType())) {
+            String imageBase64 = message.getContent();
+            // 去除 Base64 编码的前缀
+            if (imageBase64.startsWith("data:image")) {
+                int commaIndex = imageBase64.indexOf(',');
+                if (commaIndex != -1) {
+                    imageBase64 = imageBase64.substring(commaIndex + 1);
+                }
+            }
+            try {
+                // 生成唯一的文件名
+                String fileName = UUID.randomUUID().toString() + ".jpg";
+                Path storagePath = Paths.get(imageStorageDirectory);
+                if (!Files.exists(storagePath)) {
+                    Files.createDirectories(storagePath);
+                }
+                File imageFile = new File(storagePath.toFile(), fileName);
+                try (FileOutputStream fos = new FileOutputStream(imageFile)) {
+                    byte[] imageBytes = Base64.getDecoder().decode(imageBase64.getBytes(StandardCharsets.UTF_8));
+                    fos.write(imageBytes);
+                }
+
+                // 提取相对路径
+                String relativePath = "/chats/" + fileName;
+                // 将图片相对存储路径保存到消息内容中
+                message.setContent(relativePath);
+
+            } catch (IOException e) {
+                throw new Exception("图片保存失败: " + e.getMessage(), e);
+            }
+        }
+
         System.out.println(message);
 
+        // 插入消息到数据库
         messageDao.insert(message);
+
+        // 通过 WebSocket 发送消息给接收方
+        webSocketUtil.sendMessageTo(com.alibaba.fastjson.JSONObject.toJSONString(message), message.getReceive_user());
     }
 
     // 获取两个人的聊天记录
@@ -158,22 +212,22 @@ public class MessageService {
                 .map(User::getId)
                 .collect(Collectors.toList());
 
-        // 如果获取到的用户少于100个，则补齐剩余数量的用户数据,这里补齐的是从没和自己聊天过的用户
-        if (sendUserIds.size() < limitUserLength) {
-            int leaveCount = limitUserLength - sendUserIds.size();
-            List<User> userList = userDao.selectByWhere("id", sendUserIds.toArray(), leaveCount);
-            if (userList != null && !userList.isEmpty()) {
-                for (User user : userList) {
-                    MessageForm messageForm = new MessageForm();
-                    messageForm.setSend_user(user);
-                    messageForm.setReceive_user(loginUser);
-                    messageForm.setIs_online(false);
-                    messageForm.setNo_read_message_length(0);
-                    messageForm.setLast_message("");
-                    messageFormList.add(messageForm);
-                }
-            }
-        }
+//        // 如果获取到的用户少于100个，则补齐剩余数量的用户数据,这里补齐的是从没和自己聊天过的用户
+//        if (sendUserIds.size() < limitUserLength) {
+//            int leaveCount = limitUserLength - sendUserIds.size();
+//            List<User> userList = userDao.selectByWhere("id", sendUserIds.toArray(), leaveCount);
+//            if (userList != null && !userList.isEmpty()) {
+//                for (User user : userList) {
+//                    MessageForm messageForm = new MessageForm();
+//                    messageForm.setSend_user(user);
+//                    messageForm.setReceive_user(loginUser);
+//                    messageForm.setIs_online(false);
+//                    messageForm.setNo_read_message_length(0);
+//                    messageForm.setLast_message("");
+//                    messageFormList.add(messageForm);
+//                }
+//            }
+//        }
 
         // 按照在线状态为true，有聊天记录的优先展示
         messageFormList.sort((o1, o2) -> {
@@ -279,7 +333,7 @@ public class MessageService {
         return messageFormList;
     }
 
-    // 用户区查到的数据，有用户名就查用户名对应用户数据和聊天记录，没有默认查300个用户（配置）
+    // 用户区查到的数据，有用户名就查用户名对应用户数据和聊天记录
     public List<MessageForm> searchUserForForm(int userId, String username) throws Exception {
         AssertUtils.isError(userId == 0, "登录用户不能为空!");
         User loginUser = userDao.selectbyUserId(userId);
@@ -295,7 +349,7 @@ public class MessageService {
                 MessageForm messageForm = new MessageForm();
                 messageForm.setSend_user(user);
                 messageForm.setReceive_user(loginUser);
-                messageForm.setIs_online(ids.contains(String.valueOf(user.getId())));
+                messageForm.setIs_online(ids.contains(user.getId()));
 
                 // 获取对方发送的信息
                 List<Message> receiveMessageList = messageDao.selectBySendUserAndReceiveUserLimitLength(
@@ -310,7 +364,18 @@ public class MessageService {
 
                 allMessages.sort(Comparator.comparing(Message::getCreate_time));
 
-                messageForm.setLast_message(allMessages.isEmpty() ? "" : allMessages.get(allMessages.size() - 1).getContent());
+                // 设置最新消息内容，根据消息类型处理显示
+                if (!allMessages.isEmpty()) {
+                    Message lastMessage = allMessages.get(allMessages.size() - 1);
+                    if ("image".equals(lastMessage.getType())) {
+                        messageForm.setLast_message("[图片]");
+                    } else {
+                        messageForm.setLast_message(lastMessage.getContent());
+                    }
+                } else {
+                    messageForm.setLast_message("");
+                }
+
                 messageForm.setMessages(allMessages);
                 // 获取allMessages中isRead为0的数量
                 messageForm.setNo_read_message_length((int) allMessages.stream()

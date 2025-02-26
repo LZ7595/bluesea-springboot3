@@ -42,5 +42,6 @@ server:
   servlet:
     context-path: /
 
-file:
-  upload-dir: G:/毕业设计/Blue - Ocean Technology(H5)/public/chats
+image:
+  storage:
+    directory: G:/毕业设计/Blue - Ocean Technology(H5)/public/chats

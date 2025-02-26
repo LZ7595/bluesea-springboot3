@@ -22,4 +22,6 @@ public class Message {
     private String is_read;
 
     private LocalDateTime create_time;
+
+    private String type; // 新增消息类型字段
 }
