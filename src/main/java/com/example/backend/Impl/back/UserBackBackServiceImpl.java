@@ -154,23 +154,4 @@ public class UserBackBackServiceImpl implements UserBackService {
     public int deleteUserMore(List<Long> userIdList) {
         return userBackMapper.deleteUserMore(userIdList);
     }
-
-    @Override
-    public String uploadFile(MultipartFile file) {
-        if (file.isEmpty()) {
-            return null;
-        }
-        // 生成唯一文件名
-        String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-        String filePath = "G:\\毕业设计\\Blue - Ocean Technology(H5)\\public\\avatar\\" + fileName; // 上传文件保存路径
-        File dest = new File(filePath);
-        String fileUrl = "/avatar/" + fileName; // 文件访问路径
-        try {
-            file.transferTo(dest);
-            return fileUrl;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
 }

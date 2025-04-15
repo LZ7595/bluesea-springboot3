@@ -11,7 +11,7 @@ import java.util.Optional;
 public interface UserService {
     Optional<UserInfo> getUserInfoById(Integer userId);
 
-    ResponseEntity<?> updateUserInfo(Integer userId, String username, String gender, Date birthday);
+    ResponseEntity<?> updateUserInfo(Integer userId, String username, String gender, Date birthday, String avatar);
 
     ResponseEntity<?> getSecurityInfo(Integer userId);
 

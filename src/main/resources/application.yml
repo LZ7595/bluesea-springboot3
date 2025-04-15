@@ -1,4 +1,18 @@
 spring:
+  web:
+    resources:
+      # 配置静态资源路径，包含类路径下的 static 目录和文件系统中的上传目录
+      static-locations:
+        - classpath:/static/
+        - file:G:/blueseaplus/files/
+      cache:
+        cachecontrol:
+          max-age: 0
+          public: true
+          private: false
+          must-revalidate: false
+  mvc:
+    static-path-pattern: /static/**
   application:
     name: backend
   datasource:
@@ -41,7 +55,15 @@ server:
   port: 8081
   servlet:
     context-path: /
-
+# 文件存储目录
 image:
   storage:
-    directory: G:/毕业设计/Blue - Ocean Technology(H5)/public/chats
+    directory: G:\\毕业设计\\files\\
+
+alipay:
+  appId: 9021000143683862
+  privateKey: MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCXwRdS97Y3EXOMPX54ijnFeMDnfefTLSU51ooST44y6DXNyrBr48jArq7vJYRSZO+J2WKa5aKWcf9dWsnPDU/eV1GevFvF7Lam2cTtEVKiIW/StY/CazrUn4Wv9va1A2zLNkTpf4/FTFKUcK/lHuYa6au/7Ay1GnEGIRgVWlsjCf0e/My8pbjiiBE3q4IPONg2wfvHcYd0Hp732dlvx5+XU1inFAELYeGnuJBNgsfwfJ3Omx1udOtcxtWMm2+8SwINT5NMegBPbBQ6VWGgEFVvJvcQjUPtyJc5toOujWcaKbHN5CW10utM65Rsbz8SzMacIMdDxqLuujMSxzJf2HEBAgMBAAECggEAed9AdAkr9R22xjG8l+Gqc8R+Z2rd+uKOutxpFjt937RNQXA+LudIGjYvly9yDRmypepHHk69PEVg6AA5gmcWdWF60xhCO7nXFjhdxmXbDwn7XCUjxueG36sdGiwkBUsy3CBBR6SCOdkJmNzG5iLieUqf/An+SpNpoZqCVOOzvXbTezlqkjXNf9HLKwP1MhSqaqELUyHvwzN4fHTYp+1Ujpwh8lQA3WLQgvBziX8XczTL/JUtGi4qNqdVHtYzcF1riKtvejhjxOE5gsS3flW1SvwhGjUvq1Ukf/Mq68splcX/rFfemTTAE/B5fdfrdTY+HPRtM1eb9BBtJQQGcen8YQKBgQDJ/I9UdfjBj7eyAbVjJsq30hxTJBXoY/D9fOpm2T5meLtiEXnxSkwyx5BFOakhyLtYtyGnnul5K1QMDVu6U79ZqdDMF8CG4Gf3K0H1SYDpBFqqFvBtiYpmcZLZsfjMhOn+MIHENlQwhV5FQET+Vc4As2ur8/6Aa1xJnTo8R9vmhwKBgQDAVcRoxYajtr4bmQjp/2EHw/bCukBUhbb4mpVhj3bB1gUbmM1yxxkeGJ0THPFXdvVgZqdyFA1jxbu6aIIeq+XCHlqq2cndrvZspxzKN5mjvwjxskHGZXb2qXCKH35b7j3skfJNBnahNg75uwq6Y+EROftK+sZ3DOX68Wad0CdGNwKBgG8bYHRjWGyQ88kVK4PZCNXI3A/X370vjJbDqeTdR3fynZC6cEuMRRIBuJh7uU9+LaAFTJv5zA/9B4SBrJ14B9/4i4RY5GzM8COERgn5XtHOtViuuZ5ndBwaCV96iJNn4ZcTc65M/E6cbljFm64T4Pd9upKh6rMVW3Sa6jfSh2HtAoGBAIyBG05+nfETGqYGkeB/U17c5XMzpLMaS6QpKV9v8o1/z5NteQiUMeEukfDYf+YpXO/jjgdkZrOwS4fNuOC3Ks04Z3vQRgvQOOz+16VSIMbiU6JdWneYv+NJvJDqmOCHlm0v4RYr1pXGbAI7hYbMWCrBdLY9pKZrocZEe3ZmDYrZAoGACYmITS5EwmLDTh4weOvUNzhIqyrwuTvbO0DPxSRy2Nc/SiuOigvGJ9XY1XsO8qX86gDM8Ae+nxgvh/mm/+xNd7nSzwNi4UpZdvzwUhPBzDcaFHBuvm5dkfxCzZf7lOH7MIvHmR+Yc8mnbgr80mYR9Ks09nEqz3XGNPUZvrONF4I=
+  alipayPublicKey: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxjUD0KbypKA1US5y3Jzlydywks94hMFN9V436erYrkMV/Vy9SSJZMw5R89y0oklG5veEmPpitszxlkWLNT4BYVMi3YE0HaiUKrGt4yPC1I02YeqjqCx7jaMtNGXq/G0y+QQ+yGKQYOtqWyMA6p4G7C9emrF018R8EVUhPux+Q0Mx1D3UERIndHnMYRpMpMD53RnCMpbCJRJqHHT0GhOoDC0RQh0nH5Rj327OQV/KHWF9z6gIN6BtzE/4z61D1VHPj89LjEOoDvcAkjaaMdehSrXCPS2KVt69SO1niu1U2T6xYUfcm0opibWWNcjvQmAiObPynwNpJHk/sYrs4zaySQIDAQAB
+  gatewayUrl: https://openapi-sandbox.dl.alipaydev.com/gateway.do
+  returnUrl: http://localhost:5173/pc/order/
+  notifyUrl: http://frp-aim.com:16000/order/pay/notify

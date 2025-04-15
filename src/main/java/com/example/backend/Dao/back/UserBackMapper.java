@@ -91,15 +91,6 @@ public interface UserBackMapper {
     int deleteUserMore(@Param("userIdList") List<Long> userIdList);
 
     /**
-     * 根据用户 ID 查询头像链接
-     *
-     * @param userId 用户 ID
-     * @return 用户头像链接
-     */
-    @Select("SELECT avatar FROM user_details WHERE user_id = #{userId}")
-    String getImageUrlsByUserId(Long userId);
-
-    /**
      * 修改头像
      *
      * @param avatar 头像链接

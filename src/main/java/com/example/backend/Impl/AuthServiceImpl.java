@@ -115,10 +115,11 @@ public class AuthServiceImpl implements AuthService {
         switch (type) {
             case USER_PASSWORD -> {
                 User result = authMapper.LoginVerification(user.getUsername());
+                result.setAvatar(authMapper.getImageUrlsByUserId(result.getId()));
                 if (result != null) {
                     if (Encryption.verifyPassword(user.getPassword(), result.getPassword())) {
                         authMapper.updateLastLoginTime(user.getUsername(), LocalDateTime.now(), "用户密码");
-                        String token = Jwt.generateRefreshToken(result.getId(),user.getUsername(), result.getRole().toString());
+                        String token = Jwt.generateRefreshToken(result.getId(),user.getUsername(), result.getRole().toString(),result.getAvatar());
                         // 创建 HttpOnly 的 Cookie
                         ResponseCookie cookie1 = createHttpOnlyCookie(token);
                         ResponseCookie cookie2 = createCookie(token);
@@ -144,8 +145,9 @@ public class AuthServiceImpl implements AuthService {
                         // 登录成功，清除验证码和过期时间
                         clearCodeFromDatabase(user.getEmail());
                         User result1 = authMapper.LoginVerification(user.getEmail());
+                        result1.setAvatar(authMapper.getImageUrlsByUserId(result1.getId()));
                         authMapper.updateLastLoginTime(user.getEmail(), LocalDateTime.now(), "邮箱验证");
-                        String token = Jwt.generateRefreshToken(result1.getId(),result1.getUsername(), result1.getRole().toString());
+                        String token = Jwt.generateRefreshToken(result1.getId(),result1.getUsername(), result1.getRole().toString(),result1.getAvatar());
                         // 创建 HttpOnly 的 Cookie
                         ResponseCookie cookie1 = createHttpOnlyCookie(token);
                         ResponseCookie cookie2 = createCookie(token);
@@ -167,10 +169,11 @@ public class AuthServiceImpl implements AuthService {
             case EMAIL_PASSWORD -> {
                 if (isEmailUsed(user.getEmail())) {
                     User result2 = authMapper.LoginVerification(user.getEmail());
+                    result2.setAvatar(authMapper.getImageUrlsByUserId(result2.getId()));
                     if (result2 != null) {
                         if (Encryption.verifyPassword(user.getPassword(), result2.getPassword())) {
                             authMapper.updateLastLoginTime(user.getEmail(), LocalDateTime.now(), "邮箱密码");
-                            String token = Jwt.generateRefreshToken(result2.getId(),result2.getUsername(), result2.getRole().toString());
+                            String token = Jwt.generateRefreshToken(result2.getId(),result2.getUsername(), result2.getRole().toString(),result2.getAvatar());
                             // 创建 HttpOnly 的 Cookie
                             ResponseCookie cookie1 = createHttpOnlyCookie(token);
                             ResponseCookie cookie2 = createCookie(token);

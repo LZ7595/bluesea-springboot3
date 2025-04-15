@@ -22,4 +22,7 @@ public interface ProductPromotionMapper {
             "WHERE NOW() BETWEEN pp.start_time AND pp.end_time " +
             "LIMIT #{num}")
     List<ProductPromotion> selectFlashSalesList(int num);
+
+    @Select("SELECT p.*, pp.* FROM productpromotion pp JOIN product p ON pp.product_id = p.product_id WHERE promotion_id = #{promotionId}")
+    ProductPromotion getProductPromotionById(Integer promotionId);
 }

@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 
@@ -11,11 +12,16 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProductReview {
-    private Long review_id;
-    private Long product_id;
-    private Long user_id;
-    private int rating;
+    private Integer review_id;
+    private Integer order_id;
+    private Integer product_id;
+    private String product_name;
+    private Integer user_id;
+    private String username;
+    private String avatar;
+    private BigDecimal rating;
     private String review_content;
-    private List<String> imageUrls;
     private Date review_time;
+    private String image_urls;
+    private boolean status;
 }

@@ -15,4 +15,5 @@ public class ProductInPromotion {
     private String product_name;
     private BigDecimal price;
     private String quality;
+    private Integer stock;
 }

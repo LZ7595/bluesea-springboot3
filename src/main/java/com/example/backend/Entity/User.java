@@ -15,6 +15,7 @@ public class User {
     private String username;
     private String email;
     private String password;
+    private String avatar;
     private LocalDateTime registerTime;
     private LocalDateTime lastLoginTime;
     private String code;

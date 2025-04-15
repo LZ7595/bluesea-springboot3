@@ -56,8 +56,6 @@ public class WebSocketUtil {
             WebSocket receiverWebSocket = userMap.get(receiverUserId);
             if (receiverWebSocket != null) {
                 try {
-                    // 发送消息给接收方
-                    receiverWebSocket.getSession().getAsyncRemote().sendText(messageInfo);
                     log.info("消息已发送给用户 {}，消息内容: {}", receiverUserId, messageInfo);
                 } catch (Exception e) {
                     log.error("发送消息给用户 {} 失败: {}", receiverUserId, e.getMessage(), e);

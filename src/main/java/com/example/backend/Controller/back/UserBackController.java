@@ -50,14 +50,6 @@ public class UserBackController {
             return "用户信息添加失败";
         }
     }
-
-    @PostMapping("/upload")
-    public String uploadFiles(@RequestParam("file") MultipartFile files) {
-        System.out.println("Received files: " + files);
-            String filePath = userBackService.uploadFile(files);
-        return filePath;
-    }
-
     @DeleteMapping("/deleteone")
     public String deleteUser(@RequestParam Long id) {
         int result = userBackService.deleteUser(id);

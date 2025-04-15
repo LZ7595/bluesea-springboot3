@@ -47,7 +47,8 @@ public class PromotionBackServiceImpl implements PromotionBackService {
                     if (promotion == null) {
                         throw new RuntimeException("Promotion not found with id: " + productId);
                     }
-
+                    int stock = promotionBackMapper.getProductStock(productId);
+                    promotion.setStock(stock);
                     ProductImage productMainImage = productImageMapper.getProductMainImageByProductId(productId);
                     promotion.setProduct_main_image(productMainImage.getImage_url());
 
@@ -72,6 +73,8 @@ public class PromotionBackServiceImpl implements PromotionBackService {
             PromotionBack promotion = promotionBackMapper.getPromotionDetailBackById(promotionId);
             if (promotion != null) {
                 ProductImage productMainImage = productImageMapper.getProductMainImageByProductId(promotion.getProduct_id());
+                int stock = promotionBackMapper.getProductStock(promotion.getProduct_id());
+                promotion.setStock(stock);
                 promotion.setProduct_main_image(productMainImage.getImage_url());
                 return ResponseEntity.ok().body(promotion);
             } else {
@@ -88,6 +91,8 @@ public class PromotionBackServiceImpl implements PromotionBackService {
             ProductInPromotion product = promotionBackMapper.getProductBack(productId);
         if (product != null) {
             ProductImage productMainImage = productImageMapper.getProductMainImageByProductId(productId);
+            int stock = promotionBackMapper.getProductStock(product.getProduct_id());
+            product.setStock(stock);
             product.setProduct_main_image(productMainImage.getImage_url());
             return ResponseEntity.ok().body(product);
         } else {
@@ -151,6 +156,7 @@ public class PromotionBackServiceImpl implements PromotionBackService {
         } else {
             PromotionBack existingPromotion = findExistingPromotion(existingPromotions, newPromotion.getPromotion_id());
             if (existingPromotion != null && shouldUpdatePromotion(newPromotion, existingPromotion)) {
+                System.out.println("更新");
                 promotionBackMapper.updatePromotion(newPromotion);
             }
         }
@@ -171,6 +177,8 @@ public class PromotionBackServiceImpl implements PromotionBackService {
         boolean timeChanged = !isSameDate(newPromotion.getStart_time(), existingPromotion.getStart_time()) ||
                 !isSameDate(newPromotion.getEnd_time(), existingPromotion.getEnd_time());
 
+        boolean numChanged = newPromotion.getPer_user_limit() == existingPromotion.getPer_user_limit() || newPromotion.getPromotion_quantity() == existingPromotion.getPromotion_quantity()
+                || newPromotion.getPromotion_stock() == existingPromotion.getPromotion_stock();
         boolean amountOrRateChanged = false;
         if ("REDUCE_AMOUNT".equals(existingPromotion.getPromotion_type())) {
             amountOrRateChanged = !isSameBigDecimal(newPromotion.getReduce_amount(), existingPromotion.getReduce_amount());
@@ -178,7 +186,7 @@ public class PromotionBackServiceImpl implements PromotionBackService {
             amountOrRateChanged = !isSameBigDecimal(newPromotion.getDiscount_rate(), existingPromotion.getDiscount_rate());
         }
 
-        return typeChanged || timeChanged || amountOrRateChanged;
+        return typeChanged || timeChanged || amountOrRateChanged || numChanged;
     }
 
     private boolean isSameDate(Date date1, Date date2) {

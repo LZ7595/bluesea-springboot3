@@ -25,4 +25,8 @@ public class PromotionBack {
     private BigDecimal discount_price;
     private Date create_time; // 新增的创建时间字段
     private Date update_time; // 新增的更新时间字段
+    private Integer promotion_quantity;
+    private Integer per_user_limit;
+    private Integer stock;
+    private Integer promotion_stock;
 }

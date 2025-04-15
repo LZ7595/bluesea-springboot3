@@ -11,6 +11,9 @@ import java.util.Map;
 
 public interface ProductBackMapper {
 
+    @Select("SELECT product_name, product_id FROM product WHERE status = true ")
+    List<Product> getProductNameAndId();
+
     @Select("<script>" +
             "SELECT p.* FROM product p " +
             "JOIN category c ON p.category_id = c.category_id " +

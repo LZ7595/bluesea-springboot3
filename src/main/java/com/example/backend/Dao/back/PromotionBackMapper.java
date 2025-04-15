@@ -55,12 +55,12 @@ public interface PromotionBackMapper {
 
 
     //新增商品促销信息
-    @Select("INSERT INTO productpromotion (product_id, start_time, end_time, promotion_type, discount_rate, reduce_amount ) " +
-            "VALUES (#{product_id}, #{start_time}, #{end_time}, #{promotion_type}, #{discount_rate}, #{reduce_amount})")
+    @Select("INSERT INTO productpromotion (product_id, start_time, end_time, promotion_type, discount_rate, reduce_amount, promotion_quantity, per_user_limit, promotion_stock ) " +
+            "VALUES (#{product_id}, #{start_time}, #{end_time}, #{promotion_type}, #{discount_rate}, #{reduce_amount}, #{promotion_quantity}, #{per_user_limit}, #{promotion_stock})")
     int insertPromotion(PromotionBack promotion);
 
 
-    @Update("UPDATE productpromotion SET start_time = #{start_time}, end_time = #{end_time}, promotion_type = #{promotion_type}, discount_rate = #{discount_rate}, reduce_amount = #{reduce_amount} WHERE product_id = #{product_id}")
+    @Update("UPDATE productpromotion SET start_time = #{start_time}, end_time = #{end_time}, promotion_type = #{promotion_type}, discount_rate = #{discount_rate}, reduce_amount = #{reduce_amount}, promotion_quantity = #{promotion_quantity}, per_user_limit = #{per_user_limit}, promotion_stock = #{promotion_stock} WHERE promotion_id = #{promotion_id}")
     int updatePromotion(PromotionBack promotion);
 
     @Delete("DELETE FROM productpromotion WHERE promotion_id = #{promotionId}")
@@ -76,4 +76,7 @@ public interface PromotionBackMapper {
             "</foreach>" +
             "</script>")
     int deletePromotionMore(@Param("promotionIdList") List<Long> promotionIdList);
+
+    @Select("SELECT stock FROM product WHERE product_id = #{productId}")
+    Integer getProductStock(Long productId);
 }

@@ -29,5 +29,4 @@ public class ProductDetailsBack {
     private Date update_time;
     private List<String> imageUrls;
     private List<PromotionBack> promotions;
-    private List<ProductReview> reviews;
 }

@@ -11,14 +11,9 @@ import com.example.backend.Service.back.ProductBackService;
 import com.example.backend.Utils.PromotionDiscountCalculator;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.text.SimpleDateFormat;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -38,8 +33,12 @@ public class ProductBackServiceImpl implements ProductBackService {
     private BrandMapper brandMapper;
     @Autowired
     private PromotionBackMapper promotionBackMapper;
-    @Autowired
-    private ProductReviewMapper productReviewMapper;
+
+    @Override
+    public ResponseEntity<?> getSelectList(){
+        List<Product> productList = productBackMapper.getProductNameAndId();
+        return ResponseEntity.ok(productList);
+    }
 
     public ResponseEntity<ProductResponsePageResultBack> SearchProductList(String selectedCategory, String selectedBrand, String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize) {
         try {
@@ -83,7 +82,6 @@ public class ProductBackServiceImpl implements ProductBackService {
                         // 设置计算得到的折扣价格
                         promotion.setDiscount_price(discountPrice);
                     }
-                    List<ProductReview> reviews = productReviewMapper.getReviewsByProductId(productId);
                     return new ProductDetailsBack(
                             product.getProduct_id(),
                             product.getProduct_name(),
@@ -99,8 +97,7 @@ public class ProductBackServiceImpl implements ProductBackService {
                             product.getCreate_time(),
                             product.getUpdate_time(),
                             imageUrls,
-                            promotions,
-                            reviews
+                            promotions
                     );
                 }).collect(Collectors.toList());
                 ProductResponsePageResultBack productResponsePageResultBack = new ProductResponsePageResultBack(responseList, total);
@@ -188,25 +185,6 @@ public class ProductBackServiceImpl implements ProductBackService {
     @Override
     public int deleteProductMore(List<Long> productIdList) {
         return productBackMapper.deleteProductMore(productIdList);
-    }
-
-    @Override
-    public String uploadFile(MultipartFile file) {
-        if (file.isEmpty()) {
-            return null;
-        }
-        // 生成唯一文件名
-        String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-        String filePath = "G:\\毕业设计\\Blue - Ocean Technology(H5)\\public\\goods\\" + fileName; // 上传文件保存路径
-        File dest = new File(filePath);
-        String fileUrl = "/goods/" + fileName; // 文件访问路径
-        try {
-            file.transferTo(dest);
-            return fileUrl;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
     }
 
     private void handleImageUrls(Long productId, List<String> newUrls) {

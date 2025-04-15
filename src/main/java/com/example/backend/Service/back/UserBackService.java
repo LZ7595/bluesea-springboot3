@@ -12,8 +12,6 @@ public interface UserBackService {
     ResponseEntity<UserDetailsBack> getUserDetailsBack(Long id);
 
     int updateUser(UserDetailsBack user);
-    String uploadFile(org.springframework.web.multipart.MultipartFile file);
-
     int addUser(UserDetailsBack user);
     int deleteUser(Long user_id);
     int deleteUserMore(List<Long> userIdList);

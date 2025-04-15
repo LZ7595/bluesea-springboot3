@@ -21,5 +21,4 @@ public class ProductDetails {
     private int stock;
     private List<String> imageUrls;
     private List<ProductPromotion> promotions;
-    private List<ProductReview> reviews;
 }

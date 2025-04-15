@@ -6,9 +6,7 @@ import com.example.backend.Service.back.ProductBackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -34,6 +32,11 @@ public class ProductBackController {
     @GetMapping("/details")
     public ResponseEntity<?> DetailBack(@RequestParam Long product_id) {
         return productBackService.getProductDetailsBack(product_id);
+    }
+
+    @GetMapping("/selectList")
+    public ResponseEntity<?> getSelectList() {
+        return productBackService.getSelectList();
     }
 
     @PutMapping("/update")
@@ -77,18 +80,5 @@ public class ProductBackController {
         } catch (Exception e) {
             return "商品删除失败: " + e.getMessage();
         }
-    }
-
-    @PostMapping("/upload")
-    public String uploadFiles(@RequestParam("files") MultipartFile[] files) {
-        System.out.println("Received files: " + files);
-        List<String> imageUrls = new ArrayList<>();
-        for (MultipartFile file : files) {
-            String filePath = productBackService.uploadFile(file);
-            if (filePath != null) {
-                imageUrls.add(filePath);
-            }
-        }
-        return String.join(",", imageUrls);
     }
 }

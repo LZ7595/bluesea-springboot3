@@ -1,9 +1,6 @@
 package com.example.backend.Service;
 
-import com.example.backend.Entity.ProductDetails;
-import com.example.backend.Entity.ProductPromotion;
-import com.example.backend.Entity.ProductResponse;
-import com.example.backend.Entity.ProductResponsePageResult;
+import com.example.backend.Entity.*;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
@@ -21,4 +18,7 @@ public interface ProductService {
     ResponseEntity<ProductResponsePageResult> selectCategoryProductList(List<String> categoryName, int page, int size, String sortField, String sortOrder);
 
     ResponseEntity<ProductResponsePageResult> SearchProductList(String selectedCategory, String selectedBrand, String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize);
+
+    List<ProductPayInfo> batchGetProductDetails(List<Long> productIds, Integer userId);
+
 }

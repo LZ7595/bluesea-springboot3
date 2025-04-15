@@ -22,10 +22,10 @@ public class UserController {
         return userService.getUserInfoById(userId);
     }
 
-    // 修改用户名
+    // 修改用户信息
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateUserInfo(@PathVariable Integer id, @RequestParam String name, @RequestParam String gender, @DateTimeFormat(pattern = "yyyy-MM-dd") Date birthday) {
-        return userService.updateUserInfo(id, name, gender, birthday);
+    public ResponseEntity<?> updateUserInfo(@PathVariable Integer id, @RequestParam String name, @RequestParam String gender, @DateTimeFormat(pattern = "yyyy-MM-dd") Date birthday, @RequestParam String avatar) {
+        return userService.updateUserInfo(id, name, gender, birthday, avatar);
     }
 
     @GetMapping("/security/{id}")

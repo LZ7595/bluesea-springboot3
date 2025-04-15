@@ -10,10 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,8 +26,6 @@ public class ProductServiceImpl implements ProductService {
     private ProductImageMapper productImageMapper;
     @Autowired
     private ProductPromotionMapper productPromotionMapper;
-    @Autowired
-    private ProductReviewMapper productReviewMapper;
 
     @Override
     public ResponseEntity<ProductDetails> getProductDetails(Long productId) {
@@ -58,7 +53,6 @@ public class ProductServiceImpl implements ProductService {
             // 设置计算得到的折扣价格
             promotion.setDiscount_price(discountPrice);
         }
-        List<ProductReview> reviews = productReviewMapper.getReviewsByProductId(productId);
         return ResponseEntity.ok().body(new ProductDetails(
                 product.getProduct_id(),
                 product.getProduct_name(),
@@ -69,8 +63,7 @@ public class ProductServiceImpl implements ProductService {
                 product.getQuality(),
                 product.getStock(),
                 imageUrls,
-                promotions,
-                reviews
+                promotions
         ));
     }
 
@@ -105,6 +98,7 @@ public class ProductServiceImpl implements ProductService {
     public ResponseEntity<List<ProductPromotion>> selectFlashSalesList(int num) {
         // 调用 Mapper 方法查询限时活动商品列表
         List<ProductPromotion> productPromotions = productPromotionMapper.selectFlashSalesList(num);
+        System.out.println(productPromotions);
         // 遍历商品促销列表，根据促销类型计算折扣价格
         for (ProductPromotion promotion : productPromotions) {
             Long productId = promotion.getProduct_id();
@@ -310,5 +304,55 @@ public class ProductServiceImpl implements ProductService {
             return ResponseEntity.status(500).body(null);
         }
         return ResponseEntity.status(404).body(null);
+    }
+
+    @Override
+    public List<ProductPayInfo> batchGetProductDetails(List<Long> productIds, Integer userId) {
+        List<ProductPayInfo> result = new ArrayList<>();
+        for (Long productId : productIds) {
+            ProductPayInfo productDetails = productMapper.getProductDetails(productId);
+            System.out.println(productDetails);
+            if (productDetails != null) {
+                // 查询用户之前使用过的促销 ID
+                List<Integer> usedPromotions = productMapper.getUserUsedPromotions(userId, productId);
+                // 查询当前可用的促销信息
+                List<ProductPromotion> availablePromotions = productMapper.getAvailablePromotions(userId, productId);
+                // 移除用户已经使用过的促销信息
+                availablePromotions.removeIf(promotion -> usedPromotions.contains(promotion.getPromotion_id()));
+
+                ProductImage main_img = productImageMapper.getProductMainImageByProductId(productId);
+                productDetails.setProduct_main_image(main_img.getImage_url());
+                // 筛选出最优惠的促销活动
+                ProductPromotion bestPromotion = findBestPromotion(availablePromotions,productDetails.getPrice());
+                System.out.println(bestPromotion);
+                if (bestPromotion != null) {
+                    productDetails.setPromotions(List.of(bestPromotion));
+                } else {
+                    productDetails.setPromotions(List.of());
+                }
+                result.add(productDetails);
+            }
+        }
+        return result;
+    }
+
+
+
+    private ProductPromotion findBestPromotion(List<ProductPromotion> promotions, BigDecimal price) {
+        if (promotions.isEmpty()) {
+            return null;
+        }
+        return promotions.stream()
+                .max(Comparator.comparing(promotion -> {
+                    if ("DISCOUNT".equals(promotion.getPromotion_type())) {
+                        // 计算折扣类型的优惠金额
+                        return price.multiply(BigDecimal.ONE.subtract(promotion.getDiscount_rate()));
+                    } else if ("REDUCE_AMOUNT".equals(promotion.getPromotion_type())) {
+                        // 满减类型的优惠金额就是满减的数值
+                        return promotion.getReduce_amount();
+                    }
+                    return BigDecimal.ZERO;
+                }))
+                .orElse(null);
     }
 }

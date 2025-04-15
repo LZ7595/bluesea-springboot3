@@ -36,10 +36,10 @@ public class UserServiceImpl implements UserService {
         return userMapper.getUserInfoById(userId);
     }
 
-    public ResponseEntity<?> updateUserInfo(Integer userId, String username, String gender, Date birthday) {
+    public ResponseEntity<?> updateUserInfo(Integer userId, String username, String gender, Date birthday, String avatar) {
         try {
             Optional<UserInfo> userli = userMapper.getUserInfoById(userId);
-            if (userli.get().getUsername().equals(username) && userli.get().getBirthday().equals(birthday) && userli.get().getGender().equals(gender)) {
+            if (userli.get().getUsername().equals(username) && userli.get().getBirthday().equals(birthday) && userli.get().getGender().equals(gender) && userli.get().getAvatar().equals(avatar)) {
                 return ResponseEntity.badRequest().body("未做任何修改");
             }
             if (!userli.get().getUsername().equals(username)) {
@@ -50,6 +50,9 @@ public class UserServiceImpl implements UserService {
             }
             if (!userli.get().getGender().equals(gender)) {
                 userMapper.updateGender(userId, gender);
+            }
+            if(!userli.get().getAvatar().equals(avatar)){
+                userMapper.updateAvatar(userId, avatar);
             }
             return ResponseEntity.ok("修改成功");
         } catch (Exception e) {

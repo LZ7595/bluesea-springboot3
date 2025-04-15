@@ -54,12 +54,21 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
                         ProductImage mainImage = productImageMapper.getProductMainImageByProductId(productId);
                         cartProduct.setProduct_main_image(mainImage.getImage_url());
 
+                        // 查询用户之前使用过的促销 ID
+                        List<Integer> usedPromotions = productMapper.getUserUsedPromotions(userId, productId);
+                        System.out.println("sss" + usedPromotions);
+                        // 查询当前可用的促销信息
+                        List<ProductPromotion> availablePromotions = productMapper.getAvailablePromotions(userId, productId);
+                        // 移除用户已经使用过的促销信息
+                        availablePromotions.removeIf(promotion -> usedPromotions.contains(promotion.getPromotion_id()));
+
+                        System.out.println("可用促销: " + availablePromotions);
                         ProductPromotion cheapestPromotion = null;
                         BigDecimal lowestDiscountPrice = null;
-                        List<ProductPromotion> flashSale = productMapper.getFlashSaleByProductId(productId);
-                        for (ProductPromotion promotion : flashSale) {
+                        for (ProductPromotion promotion : availablePromotions) {
                             if (promotion != null) {
                                 System.out.println("Flash sale found for product ID " + promotion);
+                                promotion.setPrice(cartProduct.getPrice());
                                 BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(promotion);
                                 // 将计算得到的折扣价格设置到 ProductPromotion 对象中
                                 promotion.setDiscount_price(discountPrice);
@@ -69,6 +78,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
                                     cheapestPromotion = promotion;
                                 }
                             }
+                            System.out.println(promotion);
                         }
                         if (cheapestPromotion != null) {
                             System.out.println("最便宜的促销活动: " + cheapestPromotion);
@@ -80,8 +90,10 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
                         return cartProduct;
                     }
             ).collect(Collectors.toList());
+            System.out.println("new" + newShoppingCartList);
             return ResponseEntity.ok(newShoppingCartList);
-        }catch (Exception e){
+        } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(400).body(ErrorType.CART_SELECT_FAILED.toErrorResponse());
         }
     }

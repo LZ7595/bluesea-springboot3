@@ -6,7 +6,7 @@ import org.apache.ibatis.annotations.*;
 import java.util.List;
 
 @Mapper
-public interface MessageDao {
+public interface MessageMapper {
 
     // 根据接收用户和限制长度查询消息
     @Select("SELECT * FROM message WHERE receive_user = #{receiveUser} ORDER BY create_time DESC LIMIT #{limit}")

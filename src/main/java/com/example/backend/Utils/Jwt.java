@@ -20,16 +20,17 @@ public class Jwt {
     public static final long TOKEN_EXPIRATION_TIME = 1000 * 60 * 60 * 24;
 
     // 生成刷新令牌
-    public static String generateRefreshToken(int id,String username, String role) {
-        return generateToken(id, username, role, TOKEN_EXPIRATION_TIME);
+    public static String generateRefreshToken(int id,String username, String role, String avatar) {
+        return generateToken(id, username, role, avatar, TOKEN_EXPIRATION_TIME);
     }
 
 
-    private static String generateToken(int id,String username, String role, long expirationTime) {
+    private static String generateToken(int id,String username, String role, String avatar, long expirationTime) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("username", username);
         claims.put("role", role);
         claims.put("id",id);
+        claims.put("avatar",avatar);
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(username)

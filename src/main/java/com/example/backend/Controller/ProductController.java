@@ -90,4 +90,10 @@ public ResponseEntity<List<ProductPromotion>> getFlashSalesList(@RequestParam in
     ) {
         return productService.SearchProductList(selectedCategory, selectedBrand, searchKeyword, sortField, sortOrder, currentPage, pageSize);
     }
+
+    @PostMapping("/batch")
+    public ResponseEntity<List<ProductPayInfo>> batchGetProductDetails(@RequestBody List<Long> productIds,@RequestParam Integer userId) {
+        List<ProductPayInfo> productPayInfos = productService.batchGetProductDetails(productIds,userId);
+        return ResponseEntity.ok(productPayInfos);
+    }
 }

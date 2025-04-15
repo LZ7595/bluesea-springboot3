@@ -21,4 +21,6 @@ public class ProductPromotion {
     private BigDecimal price;
     private String quality;
     private BigDecimal discount_price;
+    private Integer promotion_quantity;
+    private Integer per_user_limit;
 }

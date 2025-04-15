@@ -1,7 +1,7 @@
 package com.example.backend.Service;
 
-import com.example.backend.Dao.MessageDao;
-import com.example.backend.Dao.UserDao;
+import com.example.backend.Dao.MessageMapper;
+import com.example.backend.Dao.UserMapper;
 import com.example.backend.Entity.User;
 import com.example.backend.Entity.WebSocket.Message;
 import com.example.backend.Entity.WebSocket.MessageForm;
@@ -38,18 +38,18 @@ public class MessageService {
     private String imageStorageDirectory;
 
     @Autowired
-    private MessageDao messageDao;
+    private MessageMapper messageMapper;
     @Autowired
-    private UserDao userDao;
+    private UserMapper userMapper;
 
     // 获取未读的接收信息
     public Integer findNoReadMessageLength(Integer userId) throws Exception {
         AssertUtils.isError(userId == null, "用户编号不能为空!");
-        User user = userDao.selectbyUserId(userId);
+        User user = userMapper.selectbyUserId(userId);
         AssertUtils.isError(user == null, "用户编号:" + userId + "不存在!");
 
         // 为防止发送人特别多导致信息未获取，这里多设置一些拿信息数据
-        List<Message> messages = messageDao.selectByReceiveUserLimitLength(userId, limitMessagesLength);
+        List<Message> messages = messageMapper.selectByReceiveUserLimitLength(userId, limitMessagesLength);
         Map<Integer, List<Message>> messageBySendUserMap = messages.stream()
                 .collect(Collectors.groupingBy(Message::getSend_user));
 
@@ -70,12 +70,12 @@ public class MessageService {
         AssertUtils.isError(message.getReceive_user() == null, "接收用户不能为空!");
         AssertUtils.isError(StringUtils.isEmpty(message.getContent()), "发送信息不能为空!");
 
-        User sendUser = userDao.selectbyUserId(message.getSend_user());
+        User sendUser = userMapper.selectbyUserId(message.getSend_user());
         AssertUtils.isError(sendUser == null, "发送用户不存在,发送信息失败!");
         AssertUtils.isError(!sendUser.isStatus(),
                 "发送用户:" + message.getSend_user() + "状态已冻结,无法发送信息!");
 
-        User receiveUser = userDao.selectbyUserId(message.getReceive_user());
+        User receiveUser = userMapper.selectbyUserId(message.getReceive_user());
         AssertUtils.isError(receiveUser == null, "接收用户不存在,发送信息失败!");
         AssertUtils.isError(!receiveUser.isStatus(),
                 "接收用户:" + message.getReceive_user() + "状态已冻结,无法接收信息!");
@@ -102,7 +102,7 @@ public class MessageService {
             try {
                 // 生成唯一的文件名
                 String fileName = UUID.randomUUID().toString() + ".jpg";
-                Path storagePath = Paths.get(imageStorageDirectory);
+                Path storagePath = Paths.get(imageStorageDirectory + "/chats");
                 if (!Files.exists(storagePath)) {
                     Files.createDirectories(storagePath);
                 }
@@ -125,7 +125,7 @@ public class MessageService {
         System.out.println(message);
 
         // 插入消息到数据库
-        messageDao.insert(message);
+        messageMapper.insert(message);
 
         // 通过 WebSocket 发送消息给接收方
         webSocketUtil.sendMessageTo(com.alibaba.fastjson.JSONObject.toJSONString(message), message.getReceive_user());
@@ -136,17 +136,17 @@ public class MessageService {
         AssertUtils.isError(sendUserId == 0, "发送用户为空!");
         AssertUtils.isError(receiveUserId == 0, "接收用户为空!");
 
-        User sendUser = userDao.selectbyUserId(sendUserId);
+        User sendUser = userMapper.selectbyUserId(sendUserId);
         AssertUtils.isError(sendUser == null, "发送用户不存在,发送信息失败!");
 
-        User receiveUser = userDao.selectbyUserId(receiveUserId);
+        User receiveUser = userMapper.selectbyUserId(receiveUserId);
         AssertUtils.isError(receiveUser == null, "接收用户不存在,发送信息失败!");
 
         // 获取对方发送的信息
-        List<Message> receiveMessageList = messageDao.selectBySendUserAndReceiveUserLimitLength(
+        List<Message> receiveMessageList = messageMapper.selectBySendUserAndReceiveUserLimitLength(
                 sendUserId, receiveUserId, limitMessagesLength);
         // 获取发送给对方的信息
-        List<Message> sendMessageList = messageDao.selectBySendUserAndReceiveUserLimitLength(
+        List<Message> sendMessageList = messageMapper.selectBySendUserAndReceiveUserLimitLength(
                 receiveUserId, sendUserId, limitMessagesLength);
 
         List<Message> allMessageList = new ArrayList<>();
@@ -164,7 +164,7 @@ public class MessageService {
                 .collect(Collectors.toList());
         if (!noReadMessageList.isEmpty()) {
             for (Message message : noReadMessageList) {
-                messageDao.update(message.getHandle());
+                messageMapper.update(message.getHandle());
             }
         }
         return sortedMessageList;
@@ -173,7 +173,7 @@ public class MessageService {
     // 获取所有数据
     public List<MessageForm> findAllMessageForm(int userId) throws Exception {
         AssertUtils.isError(userId == 0, "用户编号不能为空!");
-        User loginUser = userDao.selectbyUserId(userId);
+        User loginUser = userMapper.selectbyUserId(userId);
         AssertUtils.isError(loginUser == null, "用户编号:" + userId + "不存在!");
 
         Map<Integer, WebSocket> users = webSocketUtil.getUsers();
@@ -190,12 +190,12 @@ public class MessageService {
                     .collect(Collectors.toList())
                     .contains(id)) {
                 MessageForm messageForm = new MessageForm();
-                User sendUserData = userDao.selectbyUserId(id);
+                User sendUserData = userMapper.selectbyUserId(id);
                 if (sendUserData == null) {
                     continue;
                 }
                 List<Message> allMessageList = findBothMessages(userId, id,
-                        limitMessagesLength, messageDao);
+                        limitMessagesLength, messageMapper);
                 messageForm.setMessages(allMessageList);
                 messageForm.setSend_user(sendUserData);
                 messageForm.setReceive_user(loginUser);
@@ -247,7 +247,7 @@ public class MessageService {
     // 获取登录用户所有聊过天的记录数据
     public List<MessageForm> findAllMessageChatDataWithLoginUserId(int userId) throws Exception {
         AssertUtils.isError(userId == 0, "用户编号不能为空!");
-        User loginUser = userDao.selectbyUserId(userId);
+        User loginUser = userMapper.selectbyUserId(userId);
         AssertUtils.isError(loginUser == null, "用户编号:" + userId + "不存在!");
 
         Map<Integer, WebSocket> users = webSocketUtil.getUsers();
@@ -256,7 +256,7 @@ public class MessageService {
         List<MessageForm> messageFormList = new ArrayList<>();
 
         // 获取所有有发送信息给自己聊天的用户
-        List<Integer> allSendUsers = messageDao.selectByReceiveUser(userId).stream()
+        List<Integer> allSendUsers = messageMapper.selectByReceiveUser(userId).stream()
                 .map(Message::getSend_user)
                 .distinct()
                 .collect(Collectors.toList());
@@ -264,15 +264,15 @@ public class MessageService {
         for (Integer sendUser : allSendUsers) {
             // 发送人的用户信息
             MessageForm messageForm = new MessageForm();
-            User sendUserData = userDao.selectbyUserId(sendUser);
+            User sendUserData = userMapper.selectbyUserId(sendUser);
             if (sendUserData == null) {
                 continue;
             }
             // 获取对方发送的信息
-            List<Message> receiveMessageList = messageDao.selectBySendUserAndReceiveUserLimitLength(
+            List<Message> receiveMessageList = messageMapper.selectBySendUserAndReceiveUserLimitLength(
                     sendUser, userId, limitMessagesLength);
             // 获取发送给对方的信息
-            List<Message> sendMessageList = messageDao.selectBySendUserAndReceiveUserLimitLength(
+            List<Message> sendMessageList = messageMapper.selectBySendUserAndReceiveUserLimitLength(
                     userId, sendUser, limitMessagesLength);
 
             List<Message> allMessageList = new ArrayList<>();
@@ -301,7 +301,7 @@ public class MessageService {
         }
 
         // 获取只有自己发送信息给别人的记录的用户
-        List<Integer> allSendToUsers = messageDao.selectBySendUser(userId).stream()
+        List<Integer> allSendToUsers = messageMapper.selectBySendUser(userId).stream()
                 .map(Message::getReceive_user)
                 .distinct()
                 .collect(Collectors.toList());
@@ -313,7 +313,7 @@ public class MessageService {
                 continue;
             }
             MessageForm messageForm = new MessageForm();
-            User receiveUserData = userDao.selectbyUserId(receiveUser);
+            User receiveUserData = userMapper.selectbyUserId(receiveUser);
             if (receiveUserData == null) {
                 continue;
             }
@@ -321,7 +321,7 @@ public class MessageService {
             messageForm.setSend_user(receiveUserData);
             messageForm.setLast_message("");
             messageForm.setNo_read_message_length(0);
-            List<Message> sendMessageList = messageDao.selectBySendUserAndReceiveUserLimitLength(userId,
+            List<Message> sendMessageList = messageMapper.selectBySendUserAndReceiveUserLimitLength(userId,
                     receiveUser, limitMessagesLength);
             // 按照CreateTime排序从小到大
             messageForm.setMessages(sendMessageList.stream()
@@ -336,12 +336,12 @@ public class MessageService {
     // 用户区查到的数据，有用户名就查用户名对应用户数据和聊天记录
     public List<MessageForm> searchUserForForm(int userId, String username) throws Exception {
         AssertUtils.isError(userId == 0, "登录用户不能为空!");
-        User loginUser = userDao.selectbyUserId(userId);
+        User loginUser = userMapper.selectbyUserId(userId);
         AssertUtils.isError(loginUser == null, "登录用户不存在!");
 
         List<MessageForm> messageFormList = new ArrayList<>();
         if (StringUtils.isNotEmpty(username)) {
-            List<User> userList = userDao.selectByUserName(username);
+            List<User> userList = userMapper.selectByUserName(username);
             Map<Integer, WebSocket> users = webSocketUtil.getUsers();
             Set<Integer> ids = users.keySet();
 
@@ -352,10 +352,10 @@ public class MessageService {
                 messageForm.setIs_online(ids.contains(user.getId()));
 
                 // 获取对方发送的信息
-                List<Message> receiveMessageList = messageDao.selectBySendUserAndReceiveUserLimitLength(
+                List<Message> receiveMessageList = messageMapper.selectBySendUserAndReceiveUserLimitLength(
                         user.getId(), loginUser.getId(), limitMessagesLength);
                 // 获取发送给对方的信息
-                List<Message> sendMessageList = messageDao.selectBySendUserAndReceiveUserLimitLength(
+                List<Message> sendMessageList = messageMapper.selectBySendUserAndReceiveUserLimitLength(
                         loginUser.getId(), user.getId(), limitMessagesLength);
 
                 List<Message> allMessages = new ArrayList<>();
@@ -391,10 +391,10 @@ public class MessageService {
 
     private List<Message> findBothMessages(int sendUserId, int receiveUserId,
                                            Integer limitMessageLength,
-                                           MessageDao messageDao) {
-        List<Message> receiveMessageList = messageDao.selectBySendUserAndReceiveUserLimitLength(
+                                           MessageMapper messageMapper) {
+        List<Message> receiveMessageList = messageMapper.selectBySendUserAndReceiveUserLimitLength(
                 receiveUserId, sendUserId, limitMessageLength);
-        List<Message> sendMessageList = messageDao.selectBySendUserAndReceiveUserLimitLength(
+        List<Message> sendMessageList = messageMapper.selectBySendUserAndReceiveUserLimitLength(
                 sendUserId, receiveUserId, limitMessageLength);
 
         List<Message> allMessageList = new ArrayList<>();

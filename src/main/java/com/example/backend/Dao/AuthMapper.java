@@ -32,4 +32,13 @@ public interface AuthMapper {
 
     @Update("<script>UPDATE user SET last_login_time = #{now}, last_login_type = #{LoginType} WHERE username = #{info} OR email = #{info}</script>")
     void updateLastLoginTime(@Param("info") String info, @Param("now") LocalDateTime now, @Param("LoginType") String LoginType);
+
+    /**
+     * 根据用户 ID 查询头像链接
+     *
+     * @param userId 用户 ID
+     * @return 用户头像链接
+     */
+    @Select("SELECT avatar FROM user_details WHERE user_id = #{userId}")
+    String getImageUrlsByUserId(Integer userId);
 }
