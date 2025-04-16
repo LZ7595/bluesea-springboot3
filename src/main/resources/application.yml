@@ -58,7 +58,7 @@ server:
 # 文件存储目录
 image:
   storage:
-    directory: G:\\毕业设计\\files\\
+    directory: G:\\blueseaplus\\files\\
 
 alipay:
   appId: 9021000143683862
