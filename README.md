@@ -133,7 +133,7 @@ blueseaplus
 
 1. 安装node 20.12.2
 
-2. 修改前端目录/src/vite.config.js下的constansts.ts文件中的代理地址，改成你自己后端的地址
+2. 修改前端目录根目录/src下的vite.config.js文件中的代理地址，改成你自己后端的地址
 
 3. cmd命令进入前端根目录下，安装依赖，执行:
 
