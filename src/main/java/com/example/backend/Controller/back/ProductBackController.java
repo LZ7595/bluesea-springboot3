@@ -1,7 +1,6 @@
 package com.example.backend.Controller.back;
 
 import com.example.backend.Entity.back.ProductDetailsBack;
-import com.example.backend.Entity.back.ProductResponsePageResultBack;
 import com.example.backend.Service.back.ProductBackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +16,7 @@ public class ProductBackController {
     @Autowired
     private ProductBackService productBackService;
     @GetMapping("/search")
-    public ResponseEntity<ProductResponsePageResultBack> SearchProductList(
+    public ResponseEntity<?> SearchProductList(
             @RequestParam(required = false) String selectedCategory,
             @RequestParam(required = false) String selectedBrand,
             @RequestParam(required = false) String searchKeyword,

@@ -1,19 +1,9 @@
 package com.example.backend.Controller.back;
 
-import com.example.backend.Entity.back.OrderDetailsBack;
-import com.example.backend.Entity.back.OrderResponsePageResultBack;
-import com.example.backend.Entity.back.ProductDetailsBack;
-import com.example.backend.Entity.back.ProductResponsePageResultBack;
 import com.example.backend.Service.back.OrderBackService;
-import com.example.backend.Service.back.ProductBackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
 
 @RestController
 @RequestMapping("/back/order")
@@ -22,7 +12,7 @@ public class OrderBackController {
     @Autowired
     private OrderBackService orderBackService;
     @GetMapping("/search")
-    public ResponseEntity<OrderResponsePageResultBack> SearchOrderList(
+    public ResponseEntity<?> SearchOrderList(
             @RequestParam(required = false) String searchKeyword,
             @RequestParam(defaultValue = "create_time") String sortField,
             @RequestParam(defaultValue = "DESC") String sortOrder,

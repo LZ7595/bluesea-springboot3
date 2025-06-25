@@ -8,10 +8,6 @@ import java.util.List;
 @Mapper
 public interface MessageMapper {
 
-    // 根据接收用户和限制长度查询消息
-    @Select("SELECT * FROM message WHERE receive_user = #{receiveUser} ORDER BY create_time DESC LIMIT #{limit}")
-    List<Message> selectByReceiveUserLimitLength(@Param("receiveUser") int receiveUser, @Param("limit") Integer limit);
-
     // 根据发送用户和接收用户以及限制长度查询消息
     @Select("SELECT * FROM message WHERE send_user = #{sendUser} AND receive_user = #{receiveUser} ORDER BY create_time DESC LIMIT #{limit}")
     List<Message> selectBySendUserAndReceiveUserLimitLength(@Param("sendUser") int sendUser, @Param("receiveUser") int receiveUser, @Param("limit") Integer limit);

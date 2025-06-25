@@ -46,7 +46,7 @@ public class RecommendationServiceImpl implements RecommendationService {
     private RecommendationMapper recommendationMapper;
 
     @Override
-    public List<ProductResponse> recommendProducts(int topN) throws IOException {
+    public List<ProductResponse> recommendProducts(int topN, Long targetProductIdParam) throws IOException {
         List<Product> allProducts = productMapper.getAllProducts();
         if (allProducts.isEmpty()) {
             logger.info("No products found in the database.");
@@ -54,9 +54,16 @@ public class RecommendationServiceImpl implements RecommendationService {
         }
         System.out.println("allProducts: " + allProducts);
 
-        // 随机选择一个产品作为目标产品
-        Product targetProduct = pickRandomProduct(allProducts);
-        Long targetProductId = targetProduct.getProduct_id();
+        Long targetProductId;
+        Product targetProduct;
+        if (targetProductIdParam == null) {
+            // 随机选择一个产品作为目标产品
+            targetProduct = pickRandomProduct(allProducts);
+            targetProductId = targetProduct.getProduct_id();
+        } else {
+            targetProductId = targetProductIdParam;
+            targetProduct = productMapper.getProductById(targetProductId);
+        }
 
         Directory index = new RAMDirectory();
         Analyzer analyzer = new StandardAnalyzer();
@@ -140,10 +147,15 @@ public class RecommendationServiceImpl implements RecommendationService {
         reader.close();
 
         // 额外步骤：根据推荐表中的推荐信息调整推荐结果
-        List<Recommendation> recommendations = recommendationMapper.getRecommendationsByProductId(targetProductId);
+        List<Recommendation> recommendations = recommendationMapper.getRecommendations();
         logger.info("Found {} recommendations from the recommendation table for target product with id {}.", recommendations.size(), targetProductId);
         List<Product> finalRecommendations = new ArrayList<>();
+        System.out.println(recommendations);
         for (Recommendation recommendation : recommendations) {
+            Long id = recommendation.getProduct_id();
+            if (id == null || id.equals(targetProductId)) { // 检查ID是否与目标商品ID相同
+                continue;
+            }
             Product product = productMapper.getProductById(recommendation.getProduct_id());
             if (product != null) {
                 finalRecommendations.add(product);

@@ -5,7 +5,6 @@ import com.example.backend.Dao.back.ProductBackMapper;
 import com.example.backend.Dao.back.PromotionBackMapper;
 import com.example.backend.Entity.*;
 import com.example.backend.Entity.back.ProductDetailsBack;
-import com.example.backend.Entity.back.ProductResponsePageResultBack;
 import com.example.backend.Entity.back.PromotionBack;
 import com.example.backend.Service.back.ProductBackService;
 import com.example.backend.Utils.PromotionDiscountCalculator;
@@ -40,7 +39,7 @@ public class ProductBackServiceImpl implements ProductBackService {
         return ResponseEntity.ok(productList);
     }
 
-    public ResponseEntity<ProductResponsePageResultBack> SearchProductList(String selectedCategory, String selectedBrand, String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize) {
+    public ResponseEntity<?> SearchProductList(String selectedCategory, String selectedBrand, String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize) {
         try {
             System.out.println(searchKeyword);
             Map<String, Object> params = new HashMap<>();
@@ -100,8 +99,8 @@ public class ProductBackServiceImpl implements ProductBackService {
                             promotions
                     );
                 }).collect(Collectors.toList());
-                ProductResponsePageResultBack productResponsePageResultBack = new ProductResponsePageResultBack(responseList, total);
-                return ResponseEntity.ok().body(productResponsePageResultBack);
+                PageResult<ProductDetailsBack> pageResult = new PageResult<>(responseList, total);
+                return ResponseEntity.ok().body(pageResult);
             }
         } catch (Exception e) {
             return ResponseEntity.status(500).body(null);
@@ -168,6 +167,11 @@ public class ProductBackServiceImpl implements ProductBackService {
                 // 插入图片链接
                 for (String imageUrl : imageUrls) {
                     productBackMapper.insertProductImage(imageUrl, productId);
+                }
+                List<PromotionBack> promotions = product.getPromotions();
+                for (PromotionBack promotion : promotions) {
+                    promotion.setProduct_id(productId);
+                    promotionBackMapper.insertPromotion(promotion);
                 }
             }
             return result;

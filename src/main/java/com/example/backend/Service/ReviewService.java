@@ -1,7 +1,7 @@
 package com.example.backend.Service;
 
 import com.example.backend.Entity.ProductReview;
-import com.example.backend.Entity.ProductReviewPage;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
@@ -11,5 +11,5 @@ public interface ReviewService {
     int updateReview(ProductReview review);
     List<ProductReview> getReviewsByOrderId(Integer orderId);
 
-    ProductReviewPage getReviewsByProductId(Integer productId, int currentPage, int pageSize);
+    ResponseEntity<?> getReviewsByProductId(Integer productId, int currentPage, int pageSize);
 }

@@ -1,7 +1,6 @@
 package com.example.backend.Service.back;
 
 import com.example.backend.Entity.back.ProductDetailsBack;
-import com.example.backend.Entity.back.ProductResponsePageResultBack;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
@@ -9,7 +8,7 @@ import java.util.List;
 public interface ProductBackService {
     ResponseEntity<?> getSelectList();
 
-    ResponseEntity<ProductResponsePageResultBack> SearchProductList(String selectedCategory, String selectedBrand, String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize);
+    ResponseEntity<?> SearchProductList(String selectedCategory, String selectedBrand, String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize);
 
     ResponseEntity<ProductDetailsBack> getProductDetailsBack(Long productId);
 

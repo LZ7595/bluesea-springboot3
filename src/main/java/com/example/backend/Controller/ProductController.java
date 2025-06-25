@@ -18,19 +18,22 @@ public class ProductController {
     private ProductService productService;
 
     @GetMapping("/details")
-    public ResponseEntity<ProductDetails> getProductDetails(@RequestParam Long product_id) {
-        return productService.getProductDetails(product_id);
+    public ResponseEntity<ProductDetails> getProductDetails(@RequestParam Long product_id, @RequestParam Integer user_id) {
+        return productService.getProductDetails(product_id, user_id);
     }
+
     @GetMapping("/newList")
     public ResponseEntity<List<Map<String, Object>>> getNewList(@RequestParam int num) {
         return productService.selectNewList(num);
     }
-@GetMapping("/flashSalesList")
-public ResponseEntity<List<ProductPromotion>> getFlashSalesList(@RequestParam int num) {
-    return productService.selectFlashSalesList(num);
-}
+
+    @GetMapping("/flashSalesList")
+    public ResponseEntity<List<ProductPromotion>> getFlashSalesList(@RequestParam int num) {
+        return productService.selectFlashSalesList(num);
+    }
+
     @GetMapping("/applePhoneList")
-    public ResponseEntity<ProductResponsePageResult> getAppleProductList(
+    public ResponseEntity<?> getAppleProductList(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "15") int pageSize,
             @RequestParam(defaultValue = "create_time") String sortField,
@@ -40,7 +43,7 @@ public ResponseEntity<List<ProductPromotion>> getFlashSalesList(@RequestParam in
     }
 
     @GetMapping("/orderPhoneList")
-    public ResponseEntity<ProductResponsePageResult> getOrderPhoneList(
+    public ResponseEntity<?> getOrderPhoneList(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "15") int pageSize,
             @RequestParam(defaultValue = "create_time") String sortField,
@@ -48,40 +51,44 @@ public ResponseEntity<List<ProductPromotion>> getFlashSalesList(@RequestParam in
     ) {
         return productService.selectOrderPhoneProductList(page, pageSize, sortField, sortOrder);
     }
+
     @GetMapping("/padList")
-    public ResponseEntity<ProductResponsePageResult> getPadList(
+    public ResponseEntity<?> getPadList(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "15") int pageSize,
             @RequestParam(defaultValue = "create_time") String sortField,
             @RequestParam(defaultValue = "DESC") String sortOrder
     ) {
         List<String> categoryNames = Arrays.asList("平板");
-        return productService.selectCategoryProductList(categoryNames,page, pageSize, sortField, sortOrder);
+        return productService.selectCategoryProductList(categoryNames, page, pageSize, sortField, sortOrder);
     }
+
     @GetMapping("/computerList")
-    public ResponseEntity<ProductResponsePageResult> getComputerList(
+    public ResponseEntity<?> getComputerList(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "15") int pageSize,
             @RequestParam(defaultValue = "create_time") String sortField,
             @RequestParam(defaultValue = "DESC") String sortOrder
     ) {
         List<String> categoryNames = Arrays.asList("电脑");
-        return productService.selectCategoryProductList(categoryNames,page, pageSize, sortField, sortOrder);
+        return productService.selectCategoryProductList(categoryNames, page, pageSize, sortField, sortOrder);
     }
+
     @GetMapping("/lifeList")
-    public ResponseEntity<ProductResponsePageResult> getLifeListList(
+    public ResponseEntity<?> getLifeListList(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "15") int pageSize,
             @RequestParam(defaultValue = "create_time") String sortField,
             @RequestParam(defaultValue = "DESC") String sortOrder
     ) {
         List<String> categoryNames = Arrays.asList("运动户外", "穿戴", "摄影摄像");
-        return productService.selectCategoryProductList(categoryNames,page, pageSize, sortField, sortOrder);
+        return productService.selectCategoryProductList(categoryNames, page, pageSize, sortField, sortOrder);
     }
+
     @GetMapping("/search")
-    public ResponseEntity<ProductResponsePageResult> SearchProductList(
-            @RequestParam(required = false) String selectedCategory,
-            @RequestParam(required = false) String selectedBrand,
+    public ResponseEntity<?> SearchProductList(
+            @RequestParam(required = false) Integer selectedCategory,
+            @RequestParam(required = false) Integer selectedBrand,
             @RequestParam(required = false) String searchKeyword,
             @RequestParam(defaultValue = "create_time") String sortField,
             @RequestParam(defaultValue = "DESC") String sortOrder,
@@ -92,8 +99,8 @@ public ResponseEntity<List<ProductPromotion>> getFlashSalesList(@RequestParam in
     }
 
     @PostMapping("/batch")
-    public ResponseEntity<List<ProductPayInfo>> batchGetProductDetails(@RequestBody List<Long> productIds,@RequestParam Integer userId) {
-        List<ProductPayInfo> productPayInfos = productService.batchGetProductDetails(productIds,userId);
+    public ResponseEntity<List<ProductPayInfo>> batchGetProductDetails(@RequestBody List<Long> productIds, @RequestParam Integer userId) {
+        List<ProductPayInfo> productPayInfos = productService.batchGetProductDetails(productIds, userId);
         return ResponseEntity.ok(productPayInfos);
     }
 }

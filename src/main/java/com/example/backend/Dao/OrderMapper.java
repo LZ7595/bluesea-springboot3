@@ -23,7 +23,7 @@ public interface OrderMapper {
     @Update("UPDATE `order` SET order_status = 'PAID', pay_time = NOW() WHERE order_no = #{order_no}")
     int updateOrderStatus(String order_no);
 
-    @Update("UPDATE `order` SET order_status = 'CANCELLED' WHERE order_id = #{orderId}")
+    @Update("UPDATE `order` SET order_status = 'CANCELED' WHERE order_id = #{orderId}")
     int cancelOrder(Long orderId);
 
     @Select("<script>" +

@@ -38,24 +38,13 @@ public class UserServiceImpl implements UserService {
 
     public ResponseEntity<?> updateUserInfo(Integer userId, String username, String gender, Date birthday, String avatar) {
         try {
-            Optional<UserInfo> userli = userMapper.getUserInfoById(userId);
-            if (userli.get().getUsername().equals(username) && userli.get().getBirthday().equals(birthday) && userli.get().getGender().equals(gender) && userli.get().getAvatar().equals(avatar)) {
-                return ResponseEntity.badRequest().body("未做任何修改");
-            }
-            if (!userli.get().getUsername().equals(username)) {
-                userMapper.updateUsername(userId, username);
-            }
-            if (!userli.get().getBirthday().equals(birthday)) {
-                userMapper.updateBirthday(userId, new java.sql.Date(birthday.getTime()));
-            }
-            if (!userli.get().getGender().equals(gender)) {
-                userMapper.updateGender(userId, gender);
-            }
-            if(!userli.get().getAvatar().equals(avatar)){
-                userMapper.updateAvatar(userId, avatar);
-            }
+            userMapper.updateUsername(userId, username);
+            userMapper.updateBirthday(userId, new java.sql.Date(birthday.getTime()));
+            userMapper.updateGender(userId, gender);
+            userMapper.updateAvatar(userId, avatar);
             return ResponseEntity.ok("修改成功");
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.badRequest().body("修改失败");
         }
     }
@@ -393,7 +382,7 @@ public class UserServiceImpl implements UserService {
         return confirmResult;
     }
 
-    public ResponseEntity<?> searchUserByUserId(Integer userId){
+    public ResponseEntity<?> searchUserByUserId(Integer userId) {
         try {
             User user = userMapper.searchUserByUserId(userId);
             if (user == null) {
@@ -405,4 +394,22 @@ public class UserServiceImpl implements UserService {
             return ResponseEntity.status(500).body(null);
         }
     }
+
+    public static boolean isSameDay(Date date1, Date date2) {
+        if (date1 == null || date2 == null) {
+            return false;
+        }
+
+        Calendar cal1 = Calendar.getInstance();
+        cal1.setTime(date1);
+
+        Calendar cal2 = Calendar.getInstance();
+        cal2.setTime(date2);
+
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                cal1.get(Calendar.MONTH) == cal2.get(Calendar.MONTH) &&
+                cal1.get(Calendar.DAY_OF_MONTH) == cal2.get(Calendar.DAY_OF_MONTH);
+    }
+
+
 }

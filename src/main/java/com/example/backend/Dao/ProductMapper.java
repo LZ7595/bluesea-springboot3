@@ -86,10 +86,10 @@ public interface ProductMapper {
             "JOIN brand b ON p.brand_id = b.brand_id " +
             "<where> " +
             "<if test='selectedCategory != null and selectedCategory != \"\"'> " +
-            "AND c.category_name = #{selectedCategory} " +
+            "AND c.category_id = #{selectedCategory} " +
             "</if> " +
             "<if test='selectedBrand != null and selectedBrand != \"\"'> " +
-            "AND b.brand_name = #{selectedBrand} " +
+            "AND b.brand_id = #{selectedBrand} " +
             "</if> " +
             "<if test='searchKeyword != null and searchKeyword != \"\"'> " +
             "AND (p.product_name LIKE CONCAT('%', #{searchKeyword}, '%') OR p.product_description LIKE CONCAT('%', #{searchKeyword}, '%')) " +
@@ -143,6 +143,7 @@ public interface ProductMapper {
 
     /**
      * 查询商品基本信息
+     *
      * @param productId 商品 ID
      * @return 商品详情
      */
@@ -153,32 +154,38 @@ public interface ProductMapper {
 
     /**
      * 查询用户之前使用过的商品促销 ID
-     * @param userId 用户 ID
+     *
+     * @param userId    用户 ID
      * @param productId 商品 ID
      * @return 促销 ID 列表
      */
     @Select("SELECT oi.promotion_id " +
             "FROM order_item oi " +
             "JOIN `order` o ON oi.order_id = o.order_id " +
-            "WHERE o.user_id = #{userId} AND oi.product_id = #{productId} AND o.order_status != 'CANCELLED'")
-    List<Integer> getUserUsedPromotions(@Param("userId") Integer userId, @Param("productId") Long productId);
+            "WHERE o.user_id = #{userId} AND oi.product_id = #{productId} AND o.order_status != 'CANCELED'")
+    List<Long> getUserUsedPromotions(@Param("userId") Integer userId, @Param("productId") Long productId);
 
     /**
      * 查询商品当前可用的促销信息
-     * @param userId 用户 ID
+     *
+     * @param userId    用户 ID
      * @param productId 商品 ID
      * @return 可用促销信息列表
      */
-    @Select("SELECT * " +
-            "FROM productpromotion " +
-            "WHERE product_id = #{productId} " +
-            "  AND start_time <= NOW() " +
-            "  AND (end_time IS NULL OR end_time >= NOW()) " +
-            "  AND promotion_stock > 0 " +
-            "  AND promotion_id NOT IN (SELECT oi.promotion_id " +
+    @Select("SELECT pp.*, p.price " +
+            "FROM productpromotion pp " +
+            "JOIN product p ON pp.product_id = p.product_id " +
+            "WHERE pp.product_id = #{productId} " +
+            "  AND pp.start_time <= NOW() " +
+            "  AND (pp.end_time IS NULL OR pp.end_time >= NOW()) " +
+            "  AND pp.promotion_stock > 0 " +
+            "  AND pp.promotion_id NOT IN (SELECT oi.promotion_id " +
             "                           FROM order_item oi " +
             "                           JOIN `order` o ON oi.order_id = o.order_id " +
-            "                           WHERE o.user_id = #{userId} AND oi.product_id = #{productId} AND o.order_status != 'CANCELLED')")
+            "                           WHERE o.user_id = #{userId} AND oi.product_id = #{productId} AND o.order_status != 'CANCELED')")
     List<ProductPromotion> getAvailablePromotions(@Param("userId") Integer userId, @Param("productId") Long productId);
 
+
+    @Update("UPDATE product SET stock = stock + #{quantity} WHERE product_id = #{productId}")
+    void updateProductStock(Long productId, int quantity);
 }

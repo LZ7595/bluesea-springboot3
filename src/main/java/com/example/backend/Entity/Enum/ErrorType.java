@@ -22,6 +22,10 @@ public enum ErrorType {
     CODE_INVALID_FAILED("验证码错误", 1023),
     CODE_VERIFICATION_FAILED("验证码验证失败", 1024),
 
+    // 核验
+    EMAIL_VERIFICATION_FAILED("邮箱格式错误", 1041),
+    PHONE_VERIFICATION_FAILED("手机号格式错误", 1042),
+
     // 购物车
     ITEM_ALREADY_IN_CART("该商品已在购物车中", 2011),
     CART_ADD_FAILED("添加购物车失败", 2012),

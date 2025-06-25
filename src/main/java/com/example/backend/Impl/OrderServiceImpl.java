@@ -219,6 +219,10 @@ public class OrderServiceImpl implements OrderService {
         try{
             int result = orderMapper.cancelOrder(orderId);
             if (result > 0) {
+                List<OrderItem> orderItems = orderItemMapper.getOrderItemsByOrderId(orderId);
+                for (OrderItem orderItem : orderItems) {
+                    productMapper.updateProductStock(orderItem.getProduct_id(), orderItem.getQuantity());
+                }
                 return ResponseEntity.ok("订单取消成功");
             } else {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("订单取消失败");
@@ -246,7 +250,8 @@ public class OrderServiceImpl implements OrderService {
                     order.setOrder_images(imgUrls);
                     return order;
                 }).collect(Collectors.toList());
-                return ResponseEntity.ok(new OrderDisplayPageResult(orderDisplayList, total));
+                PageResult<OrderDisplay> PageResult  = new PageResult<>(orderDisplayList, total);
+                return ResponseEntity.ok(PageResult);
             }else {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("未找到订单");
             }

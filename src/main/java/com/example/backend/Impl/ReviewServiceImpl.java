@@ -1,10 +1,11 @@
 package com.example.backend.Impl;
 
+import com.example.backend.Entity.PageResult;
 import com.example.backend.Entity.ProductReview;
-import com.example.backend.Entity.ProductReviewPage;
 import com.example.backend.Service.ReviewService;
 import com.example.backend.Dao.ReviewMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -43,10 +44,11 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    public ProductReviewPage getReviewsByProductId(Integer productId, int currentPage, int pageSize) {
+    public ResponseEntity<?> getReviewsByProductId(Integer productId, int currentPage, int pageSize) {
         int offset = (currentPage - 1) * pageSize;
         List<ProductReview> reviews = reviewMapper.getReviewsByProductId(productId, offset, pageSize);
         int total = reviewMapper.getReviewCountByProductId(productId);
-        return new ProductReviewPage(reviews, total);
+        PageResult<ProductReview> PageResult = new PageResult<>(reviews, total);
+        return ResponseEntity.ok(PageResult);
     }
 }

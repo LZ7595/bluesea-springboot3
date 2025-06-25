@@ -55,7 +55,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
                         cartProduct.setProduct_main_image(mainImage.getImage_url());
 
                         // 查询用户之前使用过的促销 ID
-                        List<Integer> usedPromotions = productMapper.getUserUsedPromotions(userId, productId);
+                        List<Long> usedPromotions = productMapper.getUserUsedPromotions(userId, productId);
                         System.out.println("sss" + usedPromotions);
                         // 查询当前可用的促销信息
                         List<ProductPromotion> availablePromotions = productMapper.getAvailablePromotions(userId, productId);
@@ -68,7 +68,6 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
                         for (ProductPromotion promotion : availablePromotions) {
                             if (promotion != null) {
                                 System.out.println("Flash sale found for product ID " + promotion);
-                                promotion.setPrice(cartProduct.getPrice());
                                 BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(promotion);
                                 // 将计算得到的折扣价格设置到 ProductPromotion 对象中
                                 promotion.setDiscount_price(discountPrice);

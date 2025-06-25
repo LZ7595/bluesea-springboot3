@@ -18,48 +18,55 @@ public class AddressController {
     private AddressService addressService;
 
     @PostMapping("/addAddress")
-    public ResponseEntity<Map<String, Boolean>> addAddress(@RequestBody Address address) {
+    public String addAddress(@RequestBody Address address) {
         System.out.println("addAddress: " + address);
         boolean success = addressService.addAddress(address);
-        Map<String, Boolean> result = new HashMap<>();
-        result.put("success", success);
-        return ResponseEntity.ok(result);
+        if (success) {
+            return "添加成功";
+        } else {
+            return "添加失败";
+        }
     }
 
     @GetMapping("/getAddress/{userId}")
-    public ResponseEntity<List<Address>> getAddress(@PathVariable int userId) {
-        List<Address> address = addressService.getAddress(userId);
-        return ResponseEntity.ok(address);
+    public List<Address> getAddress(@PathVariable int userId) {
+        return addressService.getAddress(userId);
     }
 
     @PutMapping("/setDefaultAddress")
-    public ResponseEntity<Map<String, Boolean>> setDefaultAddress(@RequestBody Address address) {
+    public String setDefaultAddress(@RequestBody Address address) {
         System.out.println("setDefaultAddress: " + address);
         boolean success = addressService.setDefaultAddress(address);
-        Map<String, Boolean> result = new HashMap<>();
-        result.put("success", success);
-        return ResponseEntity.ok(result);
+        if (success) {
+            return "设置成功";
+        } else {
+            return "设置失败";
+        }
     }
 
     @DeleteMapping("/deleteAddress/{addressId}")
-    public ResponseEntity<Map<String, Boolean>> deleteAddress(@PathVariable int addressId) {
+    public String deleteAddress(@PathVariable int addressId) {
         boolean success = addressService.deleteAddress(addressId);
-        Map<String, Boolean> result = new HashMap<>();
-        result.put("success", success);
-        return ResponseEntity.ok(result);
+        if (success) {
+            return "删除成功";
+        } else {
+            return "删除失败";
+        }
     }
 
     @GetMapping("/getAddressDetail/{addressId}")
-    public ResponseEntity<Address> getAddressDetail(@PathVariable int addressId) {
+    public Address getAddressDetail(@PathVariable int addressId) {
         Address address = addressService.getAddressDetail(addressId);
-        return ResponseEntity.ok(address);
+        return address;
     }
 
     @PutMapping("/updateAddress")
-    public ResponseEntity<Map<String, Boolean>> updateAddress(@RequestBody Address address) {
+    public String updateAddress(@RequestBody Address address) {
         boolean success = addressService.updateAddress(address);
-        Map<String, Boolean> result = new HashMap<>();
-        result.put("success", success);
-        return ResponseEntity.ok(result);
+        if (success) {
+            return "更新成功";
+        } else {
+            return "更新失败";
+        }
     }
 }

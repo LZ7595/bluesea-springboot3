@@ -5,7 +5,6 @@ import com.example.backend.Dao.back.PromotionBackMapper;
 import com.example.backend.Entity.*;
 import com.example.backend.Entity.back.ProductInPromotion;
 import com.example.backend.Entity.back.PromotionBack;
-import com.example.backend.Entity.back.PromotionResponsePageResultBack;
 import com.example.backend.Service.back.PromotionBackService;
 import com.example.backend.Utils.PromotionDiscountCalculator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,7 +25,7 @@ public class PromotionBackServiceImpl implements PromotionBackService {
     @Autowired
     private PromotionBackMapper promotionBackMapper;
 
-    public ResponseEntity<PromotionResponsePageResultBack> SearchPromotionList(String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize) {
+    public ResponseEntity<?> SearchPromotionList(String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize) {
         try {
             System.out.println(searchKeyword);
             Map<String, Object> params = new HashMap<>();
@@ -59,8 +57,8 @@ public class PromotionBackServiceImpl implements PromotionBackService {
 
                     return promotion;
                 }).collect(Collectors.toList());
-                PromotionResponsePageResultBack promotionResponsePageResultBack = new PromotionResponsePageResultBack(responseList, total);
-                return ResponseEntity.ok().body(promotionResponsePageResultBack);
+                PageResult<PromotionBack> pageResult = new PageResult<>(responseList, total);
+                return ResponseEntity.ok().body(pageResult);
             }
         } catch (Exception e) {
             return ResponseEntity.status(500).body(null);
@@ -178,13 +176,18 @@ public class PromotionBackServiceImpl implements PromotionBackService {
                 !isSameDate(newPromotion.getEnd_time(), existingPromotion.getEnd_time());
 
         boolean numChanged = newPromotion.getPer_user_limit() == existingPromotion.getPer_user_limit() || newPromotion.getPromotion_quantity() == existingPromotion.getPromotion_quantity()
-                || newPromotion.getPromotion_stock() == existingPromotion.getPromotion_stock();
+                || newPromotion.getPromotion_stock() == existingPromotion.getPromotion_stock() || existingPromotion.getPromotion_stock() == null || existingPromotion.getPer_user_limit() == null;
         boolean amountOrRateChanged = false;
         if ("REDUCE_AMOUNT".equals(existingPromotion.getPromotion_type())) {
             amountOrRateChanged = !isSameBigDecimal(newPromotion.getReduce_amount(), existingPromotion.getReduce_amount());
         } else if ("DISCOUNT".equals(existingPromotion.getPromotion_type())) {
             amountOrRateChanged = !isSameBigDecimal(newPromotion.getDiscount_rate(), existingPromotion.getDiscount_rate());
         }
+
+        System.out.println(typeChanged);
+        System.out.println(timeChanged);
+        System.out.println(amountOrRateChanged);
+        System.out.println(numChanged);
 
         return typeChanged || timeChanged || amountOrRateChanged || numChanged;
     }

@@ -10,16 +10,16 @@ import java.time.LocalDateTime;
 public interface AuthMapper {
 
     @Select("SELECT COUNT(*) FROM user WHERE email = '${email}'")
-    int selectEmailOne(String email);
+    int selectEmail(String email);
 
-    @Select("SELECT * FROM user WHERE username = #{username}")
-    Boolean selectUsernameOne(String username);
+    @Select("SELECT COUNT(*) FROM user WHERE username = #{username}")
+    int selectUsername(String username);
 
     @Select("<script>SELECT username , password , role , id FROM user WHERE username = #{info} OR email = #{info}</script>")
     User LoginVerification(String info);
 
     @Insert("INSERT INTO user (email, password, username) VALUES (#{email}, #{password}, #{username})")
-    void insert(User user);
+    Boolean insert(User user);
 
     @Update("UPDATE user SET code = #{code}, codeExpiration = #{expirationTime} WHERE email = '${email}'")
     int updateCode(String code, LocalDateTime expirationTime, String email);

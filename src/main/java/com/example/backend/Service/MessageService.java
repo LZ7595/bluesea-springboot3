@@ -31,8 +31,6 @@ public class MessageService {
     private WebSocketUtil webSocketUtil;
     // 限制聊天记录数量
     final Integer limitMessagesLength = 6000;
-    // 限制用户数量
-    final Integer limitUserLength = 300;
 
     @Value("${image.storage.directory}")
     private String imageStorageDirectory;
@@ -41,28 +39,6 @@ public class MessageService {
     private MessageMapper messageMapper;
     @Autowired
     private UserMapper userMapper;
-
-    // 获取未读的接收信息
-    public Integer findNoReadMessageLength(Integer userId) throws Exception {
-        AssertUtils.isError(userId == null, "用户编号不能为空!");
-        User user = userMapper.selectbyUserId(userId);
-        AssertUtils.isError(user == null, "用户编号:" + userId + "不存在!");
-
-        // 为防止发送人特别多导致信息未获取，这里多设置一些拿信息数据
-        List<Message> messages = messageMapper.selectByReceiveUserLimitLength(userId, limitMessagesLength);
-        Map<Integer, List<Message>> messageBySendUserMap = messages.stream()
-                .collect(Collectors.groupingBy(Message::getSend_user));
-
-        int total = 0;
-        for (Integer sendUser : messageBySendUserMap.keySet()) {
-            List<Message> receiveMessageList = messageBySendUserMap.get(sendUser);
-            int noReadSize = (int) receiveMessageList.stream()
-                    .filter(o -> "0".equals(o.getIs_read()))
-                    .count();
-            total += noReadSize;
-        }
-        return total;
-    }
 
     // 发送信息的逻辑
     public void sendMessage(Message message) throws Exception {

@@ -18,19 +18,8 @@ public class MessageController {
     @Autowired
     private MessageService messageService;
 
-    // 查找未读数量
-    @GetMapping("/findNoReadMessageLength")
-    public ResponseEntity<?> findNoReadMessage(@RequestParam("userId") int userId) {
-        try {
-            Integer total = messageService.findNoReadMessageLength(userId);
-            return new ResponseEntity<>(total, HttpStatus.OK);
-        } catch (Exception e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
     // 查找两个人的聊天记录
-    @GetMapping("/findMessageBySendUserAndReceiveUser")
+    @GetMapping("/findMessage")
     public ResponseEntity<?> findMessageBySendUserAndReceiveUser(
             @RequestParam("sendUserId") int sendUserId,
             @RequestParam("receiveUserId") int receiveUserId) {

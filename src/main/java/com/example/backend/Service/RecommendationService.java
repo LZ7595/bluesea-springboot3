@@ -8,5 +8,5 @@ import java.util.List;
 
 
 public interface RecommendationService {
-    List<ProductResponse> recommendProducts(int topN) throws IOException;
+    List<ProductResponse> recommendProducts(int topN, Long targetProductIdParam) throws IOException;
 }

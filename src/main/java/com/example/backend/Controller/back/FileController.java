@@ -71,6 +71,54 @@ public class FileController {
         }
         return String.join(",", imageUrls);
     }
+    @PostMapping("/back/category/upload")
+    public String uploadCategoryFiles(@RequestParam("file") MultipartFile[] files) {
+        System.out.println("Received files: " + files);
+        List<String> imageUrls = new ArrayList<>();
+
+        for (MultipartFile file : files) {
+            if (file.isEmpty()) {
+                continue;
+            }
+            // 生成唯一文件名
+            String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+            String Path = filePath + "category/" + fileName;
+            File dest = new File(Path);
+            String fileUrl = "/category/" + fileName;
+
+            try {
+                file.transferTo(dest);
+                imageUrls.add(fileUrl);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return String.join(",", imageUrls);
+    }
+    @PostMapping("/back/brand/upload")
+    public String uploadBrandFiles(@RequestParam("file") MultipartFile[] files) {
+        System.out.println("Received files: " + files);
+        List<String> imageUrls = new ArrayList<>();
+
+        for (MultipartFile file : files) {
+            if (file.isEmpty()) {
+                continue;
+            }
+            // 生成唯一文件名
+            String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+            String Path = filePath + "brand/" + fileName;
+            File dest = new File(Path);
+            String fileUrl = "/brand/" + fileName;
+
+            try {
+                file.transferTo(dest);
+                imageUrls.add(fileUrl);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return String.join(",", imageUrls);
+    }
     @PostMapping("/review/upload")
     public String uploadCommentFiles(@RequestParam("files") MultipartFile[] files) {
         System.out.println("Received files: " + files);

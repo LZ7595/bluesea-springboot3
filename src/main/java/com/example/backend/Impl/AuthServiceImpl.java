@@ -8,6 +8,7 @@ import com.example.backend.Service.AuthService;
 import com.example.backend.Utils.Email;
 import com.example.backend.Utils.Encryption;
 import com.example.backend.Utils.Jwt;
+import com.example.backend.Utils.Validation;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -36,6 +37,12 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public ResponseEntity<?> sendVerificationCode(String email, int type) {
+
+        // 验证邮箱地址是否正确
+        if (!Validation.isValidEmail(email)) {
+            return ResponseEntity.status(500).body(ErrorType.EMAIL_VERIFICATION_FAILED.toErrorResponse());
+        }
+
         String code = generateCode();
         verificationCodes.put(email, code);
         LocalDateTime expirationTime = LocalDateTime.now().plusSeconds(CODE_EXPIRATION_TIME / 1000);
@@ -88,13 +95,18 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public boolean isUsernameUsed(String username) {
-        Boolean result = authMapper.selectUsernameOne(username);
-        return result != null && result;
+        int result = authMapper.selectUsername(username);
+        System.out.println(result);
+        if (result == 0) {
+            return false;
+        }else {
+            return true;
+        }
     }
 
     @Override
     public boolean isEmailUsed(String email) {
-        int result = authMapper.selectEmailOne(email);
+        int result = authMapper.selectEmail(email);
         if (result == 0) {
             return false;
         }else {
@@ -104,10 +116,33 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public ResponseEntity<?> registerUser(User user) {
+
+        // 如果邮箱地址不为空，验证邮箱地址是否正确
+        if (user.getEmail() != null && !Validation.isValidEmail(user.getEmail())) {
+            return ResponseEntity.status(500).body(ErrorType.EMAIL_VERIFICATION_FAILED.toErrorResponse());
+        }
+
+        // 检查用户名和邮箱是否已被注册
+        if (isUsernameUsed(user.getUsername())) {
+            return ResponseEntity.status(409).body(ErrorType.USERNAME_REGISTERED.toErrorResponse()); // 用户名已注册过
+        }
+
+        if (isEmailUsed(user.getEmail())) {
+            return ResponseEntity.status(409).body(ErrorType.EMAIL_REGISTERED.toErrorResponse()); // 邮箱已注册过
+        }
+        // 验证验证码
+        if (!validateCode(user.getEmail(), user.getCode())) {
+            return ResponseEntity.status(401).body(ErrorType.CODE_INVALID_FAILED.toErrorResponse()); // 验证码错误
+        }
+
         user.setPassword(Encryption.encryptPassword(user.getPassword()));
         System.out.println(user.getPassword());
-        authMapper.insert(user);
-        return ResponseEntity.ok("注册成功");
+        Boolean res = authMapper.insert(user);
+        if (res) {
+            return ResponseEntity.ok("注册成功");
+        }else {
+            return ResponseEntity.status(500).body(ErrorType.REGISTER_FAILED.toErrorResponse());
+        }
     }
 
     @Override
@@ -139,6 +174,9 @@ public class AuthServiceImpl implements AuthService {
                 }
             }
             case EMAIL_VERIFICATION -> {
+                if (user.getEmail() != null && !Validation.isValidEmail(user.getEmail())) {
+                    return ResponseEntity.badRequest().body("邮箱地址不正确");
+                }
                 // 这里需要添加验证码登录的逻辑
                 if (isEmailUsed(user.getEmail())) {
                     if (validateCode(user.getEmail(), user.getCode())) {
@@ -167,6 +205,9 @@ public class AuthServiceImpl implements AuthService {
                 }
             }
             case EMAIL_PASSWORD -> {
+                if (user.getEmail() != null && !Validation.isValidEmail(user.getEmail())) {
+                    return ResponseEntity.badRequest().body("邮箱地址不正确");
+                }
                 if (isEmailUsed(user.getEmail())) {
                     User result2 = authMapper.LoginVerification(user.getEmail());
                     result2.setAvatar(authMapper.getImageUrlsByUserId(result2.getId()));

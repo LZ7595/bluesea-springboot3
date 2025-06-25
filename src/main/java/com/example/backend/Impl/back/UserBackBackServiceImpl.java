@@ -2,25 +2,17 @@ package com.example.backend.Impl.back;
 
 import com.example.backend.Dao.back.UserBackMapper;
 
+import com.example.backend.Entity.PageResult;
 import com.example.backend.Entity.back.UserDetailsBack;
-import com.example.backend.Entity.back.UserResponsePageResultBack;
 
 import com.example.backend.Service.back.UserBackService;
 
 import com.example.backend.Utils.Encryption;
-import org.mybatis.logging.Logger;
-import org.mybatis.logging.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
-import java.math.BigDecimal;
 import java.util.*;
-import java.util.stream.Collectors;
 
 
 @Service
@@ -42,8 +34,8 @@ public class UserBackBackServiceImpl implements UserBackService {
             int total = userBackMapper.getSearchUserTotal(countParams);
             System.out.println(userList);
             if (userList != null) {
-                UserResponsePageResultBack userResponsePageResultBack = new UserResponsePageResultBack(userList, total);
-                return ResponseEntity.ok().body(userResponsePageResultBack);
+                PageResult<UserDetailsBack> pageResult = new PageResult<>(userList, total);
+                return ResponseEntity.ok().body(pageResult);
             }
         } catch (Exception e) {
             return ResponseEntity.status(500).body(e);

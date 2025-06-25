@@ -2,7 +2,7 @@ package com.example.backend.Impl.back;
 
 import com.example.backend.Dao.back.BannerBackMapper;
 import com.example.backend.Entity.Banner;
-import com.example.backend.Entity.back.BannerPageBack;
+import com.example.backend.Entity.PageResult;
 import com.example.backend.Service.back.BannerBackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -36,7 +36,8 @@ public class BannerBackServiceImpl implements BannerBackService {
             params.put("pageSize", pageSize);
             List<Banner> bannerList = bannerBackMapper.getBannerList(params);
             int total = bannerBackMapper.countBanners();
-            return ResponseEntity.ok().body(new BannerPageBack(bannerList, total));
+            PageResult<Banner> PageResult = new PageResult<>(bannerList,total);
+            return ResponseEntity.ok().body(PageResult);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("获取轮播图列表失败");

@@ -16,7 +16,7 @@ public class ReviewBackServiceImpl implements ReviewBackService {
     @Autowired
     private ReviewBackMapper reviewBackMapper;
 
-    public ResponseEntity<ProductReviewPage> SearchReviewList(String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize) {
+    public ResponseEntity<?> SearchReviewList(String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize) {
         try {
             Map<String, Object> params = new HashMap<>();
             params.put("searchKeyword", searchKeyword);
@@ -31,7 +31,8 @@ public class ReviewBackServiceImpl implements ReviewBackService {
             int total = reviewBackMapper.getSearchReviewTotal(countParams);
             System.out.println("total: " + total);
             if (total > 0) {
-                return ResponseEntity.ok(new ProductReviewPage(reviewList, total));
+                PageResult<ProductReview> PageResult = new PageResult<>(reviewList, total);
+                return ResponseEntity.ok(PageResult);
             }else {
                 return ResponseEntity.status(404).body(null);
             }

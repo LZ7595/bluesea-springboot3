@@ -5,7 +5,6 @@ import com.example.backend.Dao.back.OrderBackMapper;
 import com.example.backend.Dao.AddressMapper;
 import com.example.backend.Entity.*;
 import com.example.backend.Entity.back.OrderDetailsBack;
-import com.example.backend.Entity.back.OrderResponsePageResultBack;
 import com.example.backend.Service.back.OrderBackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -32,7 +31,7 @@ public class OrderBackServiceImpl implements OrderBackService {
     @Autowired
     private AddressMapper adderssMapper;
 
-    public ResponseEntity<OrderResponsePageResultBack> SearchOrderList(String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize) {
+    public ResponseEntity<?> SearchOrderList(String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize) {
         try {
             Map<String, Object> params = new HashMap<>();
             params.put("searchKeyword", searchKeyword);
@@ -75,8 +74,8 @@ public class OrderBackServiceImpl implements OrderBackService {
                             order.getExpress_time()
                     );
                 }).collect(Collectors.toList());
-                OrderResponsePageResultBack orderResponsePageResultBack = new OrderResponsePageResultBack(responseList, total);
-                return ResponseEntity.ok().body(orderResponsePageResultBack);
+                PageResult<OrderDetailsBack> PageResult = new PageResult<>(responseList, total);
+                return ResponseEntity.ok().body(PageResult);
             }
         } catch (Exception e) {
             e.printStackTrace();

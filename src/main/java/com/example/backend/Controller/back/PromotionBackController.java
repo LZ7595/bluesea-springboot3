@@ -1,7 +1,6 @@
 package com.example.backend.Controller.back;
 
 import com.example.backend.Entity.back.PromotionBack;
-import com.example.backend.Entity.back.PromotionResponsePageResultBack;
 import com.example.backend.Service.back.PromotionBackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +16,7 @@ public class PromotionBackController {
     @Autowired
     private PromotionBackService promotionBackService;
     @GetMapping("/search")
-    public ResponseEntity<PromotionResponsePageResultBack> SearchPromotionList(
+    public ResponseEntity<?> SearchPromotionList(
             @RequestParam(required = false) String searchKeyword,
             @RequestParam(defaultValue = "create_time") String sortField,
             @RequestParam(defaultValue = "DESC") String sortOrder,

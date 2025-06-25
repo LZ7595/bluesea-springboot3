@@ -28,7 +28,7 @@ public class ProductServiceImpl implements ProductService {
     private ProductPromotionMapper productPromotionMapper;
 
     @Override
-    public ResponseEntity<ProductDetails> getProductDetails(Long productId) {
+    public ResponseEntity<ProductDetails> getProductDetails(Long productId, Integer userId) {
         Product product = productMapper.getProductById(productId);
         if (product == null) {
             throw new RuntimeException("Product not found with id: " + productId);
@@ -45,10 +45,17 @@ public class ProductServiceImpl implements ProductService {
             imageUrls.add(image.getImage_url());
         }
 
-        List<ProductPromotion> promotions = productPromotionMapper.getProductPromotionsByProductId(productId);
-        System.out.println(promotions);
+        // 查询用户之前使用过的促销 ID
+        List<Long> usedPromotions = productMapper.getUserUsedPromotions(userId, productId);
+        System.out.println("sss" + usedPromotions);
+        // 查询当前可用的促销信息
+        List<ProductPromotion> availablePromotions = productMapper.getAvailablePromotions(userId, productId);
+        // 移除用户已经使用过的促销信息
+        availablePromotions.removeIf(promotion -> usedPromotions.contains(promotion.getPromotion_id()));
+
+        System.out.println("可用促销: " + availablePromotions);
         // 遍历商品促销列表，根据促销类型计算折扣价格
-        for (ProductPromotion promotion : promotions) {
+        for (ProductPromotion promotion : availablePromotions) {
             BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(promotion);
             // 设置计算得到的折扣价格
             promotion.setDiscount_price(discountPrice);
@@ -63,7 +70,7 @@ public class ProductServiceImpl implements ProductService {
                 product.getQuality(),
                 product.getStock(),
                 imageUrls,
-                promotions
+                availablePromotions
         ));
     }
 
@@ -113,7 +120,7 @@ public class ProductServiceImpl implements ProductService {
         return new ResponseEntity<>(productPromotions, HttpStatus.OK);
     }
 
-    public ResponseEntity<ProductResponsePageResult> selectApplePhoneProductList(int page, int size, String sortField, String sortOrder) {
+    public ResponseEntity<?> selectApplePhoneProductList(int page, int size, String sortField, String sortOrder) {
         try {
             int offset = (page - 1) * size;
             String categoryName = "手机";
@@ -151,8 +158,8 @@ public class ProductServiceImpl implements ProductService {
                     // 创建 ProductResponse 对象并设置相关信息
                     return new ProductResponse(product, cheapestPromotion);
                 }).collect(Collectors.toList());
-                ProductResponsePageResult productResponsePageResult = new ProductResponsePageResult(responseList,total);
-                return ResponseEntity.ok().body(productResponsePageResult);
+                PageResult<ProductResponse> PageResult = new PageResult<>(responseList,total);
+                return ResponseEntity.ok().body(PageResult);
             }
         } catch (Exception e) {
             System.out.println("Error occurred while fetching apple phone products: " + e);
@@ -161,7 +168,7 @@ public class ProductServiceImpl implements ProductService {
         return ResponseEntity.status(404).body(null);
     }
     @Override
-    public ResponseEntity<ProductResponsePageResult> selectOrderPhoneProductList(int page, int size, String sortField, String sortOrder) {
+    public ResponseEntity<?> selectOrderPhoneProductList(int page, int size, String sortField, String sortOrder) {
         try {
             int offset = (page - 1) * size;
             String categoryName = "手机";
@@ -197,8 +204,8 @@ public class ProductServiceImpl implements ProductService {
 
                     return new ProductResponse(product, cheapestPromotion);
                 }).collect(Collectors.toList());
-                ProductResponsePageResult productResponsePageResult = new ProductResponsePageResult(responseList,total);
-                return ResponseEntity.ok().body(productResponsePageResult);
+                PageResult<ProductResponse> PageResult = new PageResult<>(responseList,total);
+                return ResponseEntity.ok().body(PageResult);
             }
         } catch (Exception e) {
             return ResponseEntity.status(500).body(null);
@@ -206,7 +213,7 @@ public class ProductServiceImpl implements ProductService {
         return ResponseEntity.status(404).body(null);
     }
 
-    public ResponseEntity<ProductResponsePageResult> selectCategoryProductList(List<String> categoryName, int page, int size, String sortField, String sortOrder){
+    public ResponseEntity<?> selectCategoryProductList(List<String> categoryName, int page, int size, String sortField, String sortOrder){
         try {
             int offset = (page - 1) * size;
             List<Product> OtherPhoneProductList = productMapper.getProductListByCategoryName(categoryName, offset, size, sortField, sortOrder);
@@ -241,8 +248,8 @@ public class ProductServiceImpl implements ProductService {
 
                     return new ProductResponse(product, cheapestPromotion);
                 }).collect(Collectors.toList());
-                ProductResponsePageResult productResponsePageResult = new ProductResponsePageResult(responseList,total);
-                return ResponseEntity.ok().body(productResponsePageResult);
+                PageResult<ProductResponse> PageResult = new PageResult<>(responseList,total);
+                return ResponseEntity.ok().body(PageResult);
             }
         } catch (Exception e) {
             return ResponseEntity.status(500).body(null);
@@ -250,7 +257,7 @@ public class ProductServiceImpl implements ProductService {
         return ResponseEntity.status(404).body(null);
     }
 
-    public ResponseEntity<ProductResponsePageResult> SearchProductList(String selectedCategory, String selectedBrand, String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize){
+    public ResponseEntity<?> SearchProductList(Integer selectedCategory, Integer selectedBrand, String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize){
         try {
             System.out.println(searchKeyword);
             Map<String, Object> params = new HashMap<>();
@@ -297,8 +304,8 @@ public class ProductServiceImpl implements ProductService {
                    
                     return new ProductResponse(product, cheapestPromotion);
                 }).collect(Collectors.toList());
-                ProductResponsePageResult productResponsePageResult = new ProductResponsePageResult(responseList,total);
-                return ResponseEntity.ok().body(productResponsePageResult);
+                PageResult<ProductResponse> PageResult = new PageResult<>(responseList,total);
+                return ResponseEntity.ok().body(PageResult);
             }
         } catch (Exception e){
             return ResponseEntity.status(500).body(null);
@@ -314,7 +321,7 @@ public class ProductServiceImpl implements ProductService {
             System.out.println(productDetails);
             if (productDetails != null) {
                 // 查询用户之前使用过的促销 ID
-                List<Integer> usedPromotions = productMapper.getUserUsedPromotions(userId, productId);
+                List<Long> usedPromotions = productMapper.getUserUsedPromotions(userId, productId);
                 // 查询当前可用的促销信息
                 List<ProductPromotion> availablePromotions = productMapper.getAvailablePromotions(userId, productId);
                 // 移除用户已经使用过的促销信息

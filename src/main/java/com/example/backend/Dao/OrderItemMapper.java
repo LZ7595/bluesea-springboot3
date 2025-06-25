@@ -17,4 +17,5 @@ public interface OrderItemMapper {
 
     @Select("SELECT * FROM order_item WHERE order_id = #{orderId}")
     List<OrderItem> getOrderItemsByOrderId(Long orderId);
+
 }

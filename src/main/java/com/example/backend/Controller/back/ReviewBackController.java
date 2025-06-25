@@ -1,7 +1,6 @@
 package com.example.backend.Controller.back;
 
 import com.example.backend.Entity.ProductReview;
-import com.example.backend.Entity.ProductReviewPage;
 import com.example.backend.Service.back.ReviewBackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +16,7 @@ public class ReviewBackController {
     private ReviewBackService reviewBackService;
 
     @GetMapping("/search")
-    public ResponseEntity<ProductReviewPage> SearchReviewList(
+    public ResponseEntity<?> SearchReviewList(
             @RequestParam(required = false) String searchKeyword,
             @RequestParam(defaultValue = "review_time") String sortField,
             @RequestParam(defaultValue = "DESC") String sortOrder,

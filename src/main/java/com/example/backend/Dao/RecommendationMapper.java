@@ -10,6 +10,6 @@ import java.util.List;
 @Mapper
 public interface RecommendationMapper {
 
-    @Select("SELECT * FROM recommendations WHERE product_id = #{productId}")
-    List<Recommendation> getRecommendationsByProductId(Long productId);
+    @Select("SELECT * FROM recommendations")
+    List<Recommendation> getRecommendations();
 }

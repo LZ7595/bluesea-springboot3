@@ -1,9 +1,9 @@
 package com.example.backend.Controller;
 
 import com.example.backend.Entity.ProductReview;
-import com.example.backend.Entity.ProductReviewPage;
 import com.example.backend.Service.ReviewService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,15 +37,13 @@ public class ReviewController {
 
     @GetMapping("/order/{orderId}")
     public List<ProductReview> getReviewsByOrderId(@PathVariable("orderId") Integer orderId) {
-        List<ProductReview> reviews = reviewService.getReviewsByOrderId(orderId);
-        return reviews;
+        return reviewService.getReviewsByOrderId(orderId);
     }
 
     @GetMapping("/product/{productId}")
-    public ProductReviewPage getReviewsByProductId(@PathVariable("productId") Integer productId,
-                                                   @RequestParam(defaultValue = "1") int currentPage,
-                                                   @RequestParam(defaultValue = "10") int pageSize) {
-        ProductReviewPage ProductReviewPageRes = reviewService.getReviewsByProductId(productId,currentPage, pageSize);
-        return ProductReviewPageRes;
+    public ResponseEntity<?> getReviewsByProductId(@PathVariable("productId") Integer productId,
+                                                @RequestParam(defaultValue = "1") int currentPage,
+                                                @RequestParam(defaultValue = "10") int pageSize) {
+        return reviewService.getReviewsByProductId(productId,currentPage, pageSize);
     }
 }
