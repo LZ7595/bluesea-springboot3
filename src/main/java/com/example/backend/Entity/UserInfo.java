@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UserInfo {
+    private Integer id;
     private String username;
     private java.sql.Date birthday;
     private String gender;

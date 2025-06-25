@@ -1,13 +1,16 @@
 package com.example.backend.Impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import com.example.backend.Entity.Enum.ErrorType;
 import com.example.backend.Entity.User;
 import com.example.backend.Entity.UserInfo;
 import com.example.backend.Entity.UserSecurity;
-import com.example.backend.Utils.Email;
-import com.example.backend.Utils.Encryption;
-import com.example.backend.Utils.SmsSender;
+import com.example.backend.Utils.*;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -18,11 +21,25 @@ import com.example.backend.Service.UserService;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
+
+import static com.example.backend.Utils.RedisConstants.AUTH_USER_KEY;
 
 @Service
 public class UserServiceImpl implements UserService {
     @Autowired
     private UserMapper userMapper;
+
+    @Resource
+    private Jwt jwt;
+
+    @Resource
+    private Cookie cookie;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Value("${jwt.access.expiration}")
+    private long accessTokenExpirationTime;
 
     @Autowired
     private Email emailsend;
@@ -411,5 +428,46 @@ public class UserServiceImpl implements UserService {
                 cal1.get(Calendar.DAY_OF_MONTH) == cal2.get(Calendar.DAY_OF_MONTH);
     }
 
+    public UserInfo getUserInfo(HttpServletRequest request) {
+        String accessToken = cookie.getCookieValue(request, "accessToken");
 
+        String redisKey = AUTH_USER_KEY + request;
+
+        // 1. 尝试从 Redis 获取用户信息
+        Map<Object, Object> getUserMap = stringRedisTemplate.opsForHash().entries(redisKey);
+        UserInfo userInfo = BeanUtil.mapToBean(getUserMap, UserInfo.class, false);
+        if (userInfo != null && userInfo.getId() != null) {
+            // 缓存命中
+            return userInfo;
+        }
+
+        // 2. 缓存未命中，从数据库获取
+        try {
+            // 从 token 中解析用户ID（需要根据你的 JWT 实现调整）
+            Integer userId = jwt.getIdFromToken(accessToken); // 假设你有一个 Jwt 工具类
+            System.out.println(userId);
+            if (userId == null) {
+                return null;
+            }
+
+            // 从数据库查询用户信息
+            userInfo = userMapper.getUserInfo(userId);
+            if (userInfo != null) {
+                // 3. 将用户信息存入 Redis
+                Map<String, Object> userHash = new HashMap<>();
+                userHash.put("id", userInfo.getId().toString());
+                userHash.put("username", userInfo.getUsername());
+                userHash.put("role", userInfo.getRole().toString());
+                userHash.put("avatar", userInfo.getAvatar());
+                Map<String, Object> userMap = BeanUtil.beanToMap(userHash);
+                stringRedisTemplate.opsForHash().putAll(redisKey, userMap);
+                stringRedisTemplate.expire(redisKey, accessTokenExpirationTime, TimeUnit.MILLISECONDS);
+            }
+        } catch (Exception e) {
+            // 记录异常但不影响业务流程
+            System.out.println("获取用户信息失败，token: {}" + request + e);
+        }
+
+        return userInfo;
+    }
 }

@@ -1,6 +1,7 @@
 package com.example.backend.Service;
 
 import com.example.backend.Entity.UserInfo;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -39,4 +40,6 @@ public interface UserService {
     ResponseEntity<?> changePasswordByPhone(Integer userId, String phone, String code, String newPassword);
 
     ResponseEntity<?> searchUserByUserId(Integer userId);
+
+    UserInfo getUserInfo(HttpServletRequest request);
 }

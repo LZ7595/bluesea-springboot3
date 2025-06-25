@@ -2,6 +2,7 @@ package com.example.backend.Controller;
 
 import com.example.backend.Entity.UserInfo;
 import com.example.backend.Service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -82,5 +83,10 @@ public class UserController {
     @GetMapping("/searchUserByUserId")
     public ResponseEntity<?> searchUserByUserId(@RequestParam Integer userId) {
         return userService.searchUserByUserId(userId);
+    }
+
+    @GetMapping("/getUserInfo")
+    public UserInfo getUserInfo(HttpServletRequest request) {
+        return userService.getUserInfo(request);
     }
 }

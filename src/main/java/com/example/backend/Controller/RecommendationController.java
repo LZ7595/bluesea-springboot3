@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping("/recommend")
+@RequestMapping("/product/recommend")
 public class RecommendationController {
     @Autowired
     private RecommendationService recommendationService;

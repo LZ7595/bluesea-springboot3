@@ -24,12 +24,6 @@ public interface AuthMapper {
     @Update("UPDATE user SET code = #{code}, codeExpiration = #{expirationTime} WHERE email = '${email}'")
     int updateCode(String code, LocalDateTime expirationTime, String email);
 
-    @Update("UPDATE user SET code = NULL, codeExpiration = NULL WHERE email = '${email}'")
-    void clearCode(String email);
-
-    @Update("UPDATE user SET code = NULL, codeExpiration = NULL WHERE codeExpiration < '${now}'")
-    void deleteExpiredCodes(LocalDateTime now);
-
     @Update("<script>UPDATE user SET last_login_time = #{now}, last_login_type = #{LoginType} WHERE username = #{info} OR email = #{info}</script>")
     void updateLastLoginTime(@Param("info") String info, @Param("now") LocalDateTime now, @Param("LoginType") String LoginType);
 
@@ -41,4 +35,11 @@ public interface AuthMapper {
      */
     @Select("SELECT avatar FROM user_details WHERE user_id = #{userId}")
     String getImageUrlsByUserId(Integer userId);
+
+
+    @Select("SELECT u.*, ud.avatar " +
+            "FROM user u " +
+            "LEFT JOIN user_details ud ON u.id = ud.user_id " +
+            "WHERE u.id = #{userId}")
+    User getUserById(Integer userId);
 }

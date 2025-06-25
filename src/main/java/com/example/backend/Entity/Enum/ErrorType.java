@@ -13,8 +13,10 @@ public enum ErrorType {
     // 登录
     EMAIL_NOT_REGISTERED("邮箱未注册,请先注册", 1011),
     USERNAME_ERROR("用户名错误", 1012),
+    USER_NOT_FOUND("用户不存在", 1013),
     PASSWORD_ERROR("密码错误", 1014),
     LOGIN_FAILED("登录失败", 1019),
+    LOGIN_TYPE_INVALID("登录类型错误", 1020),
 
     // 验证码
     CODE_SENDING_FAILED("验证码发送失败", 1021),
@@ -35,7 +37,12 @@ public enum ErrorType {
     OLD_PASSWORD_INCORRECT("旧密码错误", 1031),
     PASSWORD_VERIFICATION_FAILED("密码验证失败", 1032),
     PASSWORD_UPDATE_FAILED("密码修改失败", 1033),
-    PHONE_NOT_REGISTERED("手机号未注册", 1034);
+    PHONE_NOT_REGISTERED("手机号未注册", 1034),
+
+    // 令牌
+    REFRESH_TOKEN_INVALID("刷新令牌无效", 2001),
+    REFRESH_TOKEN_EXPIRED("刷新令牌过期", 2002),
+    REFRESH_TOKEN_MISSING("刷新令牌缺失", 2003);
 
     private int errorcode;
     private String errormsg;

@@ -90,6 +90,11 @@ public interface UserMapper {
             "WHERE u.id = #{userId}")
     User selectbyUserId(@Param("userId") int userId);
 
+    @Select("SELECT u.* , ud.avatar  FROM user u " +
+            "JOIN user_details ud ON u.id = ud.user_id " +
+            "WHERE u.id = #{userId}")
+    UserInfo getUserInfo(@Param("userId") int userId);
+
     // 根据用户名查询用户信息
     @Select("SELECT u.* , ud.*  FROM user u " +
             "JOIN user_details ud ON u.id = ud.user_id " +

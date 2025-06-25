@@ -14,4 +14,6 @@ public interface AuthService {
     ResponseEntity<?> logoutUser();
     boolean isUsernameUsed(String username);
     boolean isEmailUsed(String email);
+
+    String refreshToken(String refreshToken);
 }

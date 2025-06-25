@@ -30,6 +30,7 @@ spring:
           max-active: 20
           max-idle: 10
           min-idle: 5
+          time-between-eviction-runs: 15s
   mail:
     host: smtp.qq.com
     username: 2567407595@qq.com
@@ -67,3 +68,11 @@ alipay:
   gatewayUrl: https://openapi-sandbox.dl.alipaydev.com/gateway.do
   returnUrl: http://localhost:5173/pc/order/
   notifyUrl: http://frp-aim.com:16000/order/pay/notify
+
+jwt:
+  access:
+    secret: BlueSeaTechnologyUsedDigitalMallAccessKey123456
+    expiration: 3600000  # 1小时（毫秒）
+  refresh:
+    secret: BlueSeaTechnologyUsedDigitalMallRefreshKey123456
+    expiration: 604800000  # 7天（毫秒）
