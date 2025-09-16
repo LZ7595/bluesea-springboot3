@@ -16,7 +16,7 @@ public class CategoryBackController {
     @Autowired
     private CategoryBackService categoryBackService;
 
-    @GetMapping( "/findByParentId/{parentId}")
+    @GetMapping("/findByParentId/{parentId}")
     public ResponseEntity<Map<String, Object>> findByParentId(@PathVariable Long parentId,
                                                               @RequestParam(defaultValue = "1") int currentPage,
                                                               @RequestParam(defaultValue = "20") int pageSize,
@@ -47,6 +47,7 @@ public class CategoryBackController {
             return "分类信息删除失败";
         }
     }
+
     @DeleteMapping("/deletemore")
     public String deleteCategoryMore(@RequestBody List<Long> categoryIdList) {
         try {
@@ -57,11 +58,19 @@ public class CategoryBackController {
             return "分类删除失败: " + e.getMessage();
         }
     }
-
     @GetMapping("/list")
-    public List<BrandList> getSelectList(@RequestParam(required = false) String keyword) {
+    public List<BrandList> getBrandList(@RequestParam(required = false) String keyword) {
         try {
-            return categoryBackService.getSelectList(keyword); // 服务层方法新增参数
+            return categoryBackService.getSelectList(keyword, null); // 服务层方法新增参数
+        } catch (Exception e) {
+            throw new RuntimeException("获取分类列表失败: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/list/{brandId}")
+    public List<BrandList> getBrandListByBrandId(@RequestParam(required = false) String keyword, @PathVariable Long brandId) {
+        try {
+            return categoryBackService.getSelectList(keyword, brandId); // 服务层方法新增参数
         } catch (Exception e) {
             throw new RuntimeException("获取分类列表失败: " + e.getMessage());
         }

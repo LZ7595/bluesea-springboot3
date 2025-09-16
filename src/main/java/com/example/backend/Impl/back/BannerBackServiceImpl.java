@@ -36,7 +36,7 @@ public class BannerBackServiceImpl implements BannerBackService {
             params.put("pageSize", pageSize);
             List<Banner> bannerList = bannerBackMapper.getBannerList(params);
             int total = bannerBackMapper.countBanners();
-            PageResult<Banner> PageResult = new PageResult<>(bannerList,total);
+            PageResult<Banner> PageResult = new PageResult<>(bannerList,total,currentPage, pageSize, (int) Math.ceil((double) total / pageSize));
             return ResponseEntity.ok().body(PageResult);
         } catch (Exception e) {
             e.printStackTrace();

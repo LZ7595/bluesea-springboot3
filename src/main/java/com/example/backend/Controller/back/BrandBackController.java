@@ -15,6 +15,7 @@ public class BrandBackController {
 
     @Autowired
     private BrandBackService brandBackService;
+
     @GetMapping("/search")
     public Map<String, Object> SearchBrandList(
             @RequestParam(required = false) String searchKeyword,
@@ -55,6 +56,7 @@ public class BrandBackController {
             return "品牌信息删除失败";
         }
     }
+
     @DeleteMapping("/deletemore")
     public String deleteBrandMore(@RequestBody List<Long> brandIdList) {
         try {
@@ -65,10 +67,20 @@ public class BrandBackController {
             return "品牌删除失败: " + e.getMessage();
         }
     }
+
     @GetMapping("/list")
-    public List<BrandList> getSelectList(@RequestParam(required = false) String keyword) {
+    public List<BrandList> getBrandList(@RequestParam(required = false) String keyword) {
         try {
-            return brandBackService.getSelectList(keyword); // 服务层方法新增参数
+            return brandBackService.getSelectList(null,keyword); // 服务层方法新增参数
+        } catch (Exception e) {
+            throw new RuntimeException("获取品牌列表失败: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/list/{categoryId}")
+    public List<BrandList> getBrandListByCategoryId(@PathVariable Long categoryId, @RequestParam(required = false) String keyword) {
+        try {
+            return brandBackService.getSelectList(categoryId, keyword); // 服务层方法新增参数
         } catch (Exception e) {
             throw new RuntimeException("获取品牌列表失败: " + e.getMessage());
         }

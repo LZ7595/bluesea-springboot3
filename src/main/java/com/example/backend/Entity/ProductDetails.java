@@ -17,8 +17,9 @@ public class ProductDetails {
     private String brand_name;
     private String product_description;
     private BigDecimal price;
+    private BigDecimal bestPrice; // 最佳可用价格（新增）
     private String quality;
     private int stock;
     private List<String> imageUrls;
-    private List<ProductPromotion> promotions;
+    private ProductPromotionWrapper promotionWrapper;
 }

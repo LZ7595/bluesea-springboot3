@@ -19,6 +19,11 @@ public class OrderController {
     @Autowired
     private OrderService orderService;
 
+    @PostMapping("/verifyGoods/{user_id}")
+    public ResponseEntity<?> verifyGoods(@PathVariable Integer user_id, @RequestBody List<Map<String, Object>> goodsList) {
+        // TODO: 实现验证商品库存的逻辑
+        return orderService.verifyGoodsForUser(user_id, goodsList);
+    }
     @PostMapping("/create")
     public Long createOrder(@RequestBody Map<String, Object> params) {
         System.out.println("Received request to create order with params: " + params);

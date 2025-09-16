@@ -1,11 +1,14 @@
 package com.example.backend.Impl;
 
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.example.backend.Dao.ProductImageMapper;
 import com.example.backend.Dao.ProductMapper;
 import com.example.backend.Dao.RecommendationMapper;
 import com.example.backend.Entity.*;
 import com.example.backend.Service.RecommendationService;
 import com.example.backend.Utils.PromotionDiscountCalculator;
+import jakarta.annotation.Resource;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -26,12 +29,16 @@ import org.apache.lucene.store.RAMDirectory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import static com.example.backend.Utils.RedisConstants.*;
 
 @Service
 public class RecommendationServiceImpl implements RecommendationService {
@@ -44,6 +51,8 @@ public class RecommendationServiceImpl implements RecommendationService {
     private ProductImageMapper productImageMapper;
     @Autowired
     private RecommendationMapper recommendationMapper;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     @Override
     public List<ProductResponse> recommendProducts(int topN, Long targetProductIdParam) throws IOException {
@@ -241,7 +250,6 @@ public class RecommendationServiceImpl implements RecommendationService {
                         List<ProductPromotion> flashSale = productMapper.getFlashSaleByProductId(productId);
                         for (ProductPromotion promotion : flashSale) {
                             if (promotion != null) {
-                                System.out.println("Flash sale found for product ID " + promotion);
                                 BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(promotion);
                                 // 将计算得到的折扣价格设置到 ProductPromotion 对象中
                                 promotion.setDiscount_price(discountPrice);
@@ -263,6 +271,104 @@ public class RecommendationServiceImpl implements RecommendationService {
         return new ArrayList<>();
     }
 
+    public PageResult<ProductResponse> recommendProductsList(int pageNum, int pageSize, String sessionId, Long targetProductIdParam) {
+        try {
+            // 参数校验
+            if (pageNum < 1) pageNum = 1;
+            if (pageSize < 1) pageSize = 10;
+            System.out.println(sessionId);
+            if (StrUtil.isBlank(sessionId)) {
+                sessionId = UUID.randomUUID().toString(); // 没有sessionId时自动生成（但不保证连贯性）
+            }
+
+            // 1. 优先使用会话级缓存（确保同一用户会话数据连贯）
+            String sessionCacheKey = generateSessionCacheKey(sessionId, targetProductIdParam);
+            String cacheRecommendations = stringRedisTemplate.opsForValue().get(sessionCacheKey);
+
+            // 2. 会话缓存不存在：尝试使用全局缓存（避免完全重建）
+            if (StrUtil.isBlank(cacheRecommendations)) {
+                String globalCacheKey = generateGlobalCacheKey(targetProductIdParam);
+                cacheRecommendations = stringRedisTemplate.opsForValue().get(globalCacheKey);
+
+                // 3. 全局缓存也不存在：重建推荐列表
+                if (StrUtil.isBlank(cacheRecommendations)) {
+                    List<ProductResponse> allRecommendations = recommendProducts(30, targetProductIdParam); // 生成更多数据（100条）
+                    allRecommendations = allRecommendations.stream()
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toList());
+                    cacheRecommendations = JSONUtil.toJsonStr(allRecommendations);
+                    System.out.println(cacheRecommendations);
+
+                    // 3.1 存入全局缓存（短过期时间，用于其他用户）
+                    stringRedisTemplate.opsForValue().set(
+                            globalCacheKey,
+                            cacheRecommendations,
+                            GLOBAL_CACHE_EXPIRE_TIME, // 5分钟
+                            TimeUnit.SECONDS
+                    );
+
+                    // 3.2 存入会话缓存（长过期时间 + 滑动窗口）
+                    stringRedisTemplate.opsForValue().set(
+                            sessionCacheKey,
+                            cacheRecommendations,
+                            SESSION_CACHE_EXPIRE_TIME, // 30分钟
+                            TimeUnit.SECONDS
+                    );
+                } else {
+                    // 2.1 复制全局缓存到会话缓存（确保同一用户数据连贯）
+                    stringRedisTemplate.opsForValue().set(
+                            sessionCacheKey,
+                            cacheRecommendations,
+                            SESSION_CACHE_EXPIRE_TIME,
+                            TimeUnit.SECONDS
+                    );
+                }
+            } else {
+                // 1.1 会话缓存存在：刷新过期时间（滑动窗口）
+                stringRedisTemplate.expire(sessionCacheKey, SESSION_CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
+            }
+
+            // 4. 解析缓存数据并分页
+            List<ProductResponse> allRecommendations = JSONUtil.toList(cacheRecommendations, ProductResponse.class);
+            int total = allRecommendations.size();
+            int startIndex = (pageNum - 1) * pageSize;
+            int endIndex = Math.min(startIndex + pageSize, total);
+
+            List<ProductResponse> pageData;
+            if (startIndex >= total) {
+                pageData = List.of();
+            } else {
+                pageData = allRecommendations.subList(startIndex, endIndex);
+            }
+
+            int totalPages = (total + pageSize - 1) / pageSize;
+
+            return new PageResult<ProductResponse>(
+                    pageData,
+                    total,
+                    pageNum,
+                    pageSize,
+                    totalPages
+            );
+
+        } catch (Exception e) {
+            logger.error("分页推荐异常", e);
+            return new PageResult<>(List.of(), pageSize, 0, 0, pageNum);
+        }
+    }
+
+    // 生成会话级缓存Key
+    private String generateSessionCacheKey(String sessionId, Long targetProductId) {
+        String suffix = targetProductId == null ? "DEFAULT" : targetProductId.toString();
+        return "recommend:session:" + sessionId + ":" + suffix;
+    }
+
+    // 生成全局缓存Key
+    private String generateGlobalCacheKey(Long targetProductId) {
+        String suffix = targetProductId == null ? "DEFAULT" : targetProductId.toString();
+        return "recommend:global:" + suffix;
+    }
+
     // 辅助方法：将字符串解析为 Long 类型，如果字符串无效则返回 null
     private Long parseId(String idStr) {
         if (idStr == null || idStr.isEmpty() || "null".equalsIgnoreCase(idStr)) {
@@ -275,6 +381,7 @@ public class RecommendationServiceImpl implements RecommendationService {
             return null;
         }
     }
+
 
     // 辅助方法：从产品列表中随机选择一个产品
     private Product pickRandomProduct(List<Product> allProducts) {

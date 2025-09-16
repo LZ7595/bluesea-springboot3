@@ -17,4 +17,9 @@ public class CategoryBrandController {
     public List<CategoryBrandVO> getCategoryBrandList() {
         return categoryBrandService.getCategoryBrandList();
     }
+
+    @GetMapping("/brandList")
+    public CategoryBrandVO getCategoryBrandListByCategoryName(@RequestParam String categoryName) {
+        return categoryBrandService.getBrandListByCategoryName(categoryName);
+    }
 }

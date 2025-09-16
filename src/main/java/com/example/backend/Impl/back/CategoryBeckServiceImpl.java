@@ -66,7 +66,7 @@ public class CategoryBeckServiceImpl implements CategoryBackService {
     }
 
     @Override
-    public List<BrandList> getSelectList(String keyword) {
-        return categoryBackMapper.getCategoryList(keyword);
+    public List<BrandList> getSelectList(String keyword, Long categoryId) {
+        return categoryBackMapper.getCategoryList(keyword, categoryId);
     }
 }

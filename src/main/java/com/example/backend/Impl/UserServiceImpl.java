@@ -8,6 +8,8 @@ import com.example.backend.Entity.UserSecurity;
 import com.example.backend.Utils.*;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -27,6 +29,9 @@ import static com.example.backend.Utils.RedisConstants.AUTH_USER_KEY;
 
 @Service
 public class UserServiceImpl implements UserService {
+
+    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
+
     @Autowired
     private UserMapper userMapper;
 
@@ -429,23 +434,26 @@ public class UserServiceImpl implements UserService {
     }
 
     public UserInfo getUserInfo(HttpServletRequest request) {
-        String accessToken = cookie.getCookieValue(request, "accessToken");
+        // 1. 根据客户端类型提取 accessToken（核心修改）
+        String accessToken = extractAccessTokenByClient(request);
+        if (accessToken == null) {
+            return null; // 或抛出未授权异常
+        }
 
-        String redisKey = AUTH_USER_KEY + request;
+        String redisKey = AUTH_USER_KEY + accessToken;
 
-        // 1. 尝试从 Redis 获取用户信息
+        // 2. 尝试从 Redis 获取用户信息（原有逻辑保留）
         Map<Object, Object> getUserMap = stringRedisTemplate.opsForHash().entries(redisKey);
         UserInfo userInfo = BeanUtil.mapToBean(getUserMap, UserInfo.class, false);
         if (userInfo != null && userInfo.getId() != null) {
-            // 缓存命中
+            // 缓存命中，直接返回
             return userInfo;
         }
 
-        // 2. 缓存未命中，从数据库获取
+        // 3. 缓存未命中，从数据库获取（适配多端 Token 解析）
         try {
-            // 从 token 中解析用户ID（需要根据你的 JWT 实现调整）
-            Integer userId = jwt.getIdFromToken(accessToken); // 假设你有一个 Jwt 工具类
-            System.out.println(userId);
+            // 从 token 中解析用户ID（JWT工具类需兼容所有端的 Token 格式）
+            Integer userId = jwt.getIdFromToken(accessToken);
             if (userId == null) {
                 return null;
             }
@@ -453,21 +461,47 @@ public class UserServiceImpl implements UserService {
             // 从数据库查询用户信息
             userInfo = userMapper.getUserInfo(userId);
             if (userInfo != null) {
-                // 3. 将用户信息存入 Redis
+                // 4. 将用户信息存入 Redis（原有逻辑保留）
                 Map<String, Object> userHash = new HashMap<>();
                 userHash.put("id", userInfo.getId().toString());
                 userHash.put("username", userInfo.getUsername());
                 userHash.put("role", userInfo.getRole().toString());
                 userHash.put("avatar", userInfo.getAvatar());
-                Map<String, Object> userMap = BeanUtil.beanToMap(userHash);
-                stringRedisTemplate.opsForHash().putAll(redisKey, userMap);
+                stringRedisTemplate.opsForHash().putAll(redisKey, userHash);
                 stringRedisTemplate.expire(redisKey, accessTokenExpirationTime, TimeUnit.MILLISECONDS);
             }
         } catch (Exception e) {
-            // 记录异常但不影响业务流程
-            System.out.println("获取用户信息失败，token: {}" + request + e);
+            logger.error("获取用户信息失败，token: {}", accessToken, e); // 替换System.out为日志
         }
 
         return userInfo;
     }
+
+    /**
+     * 根据客户端类型提取 accessToken（与拦截器逻辑一致）
+     */
+    private String extractAccessTokenByClient(HttpServletRequest request) {
+        String clientType = request.getHeader("Client-Type");
+        if (clientType == null) {
+            clientType = "h5"; // 默认按H5处理
+        }
+
+        switch (clientType) {
+            case "app":
+            case "h5":
+                // App/H5从Cookie提取
+                return cookie.getCookieValue(request, "accessToken");
+            case "miniprogram":
+                // 小程序从Authorization头提取（格式：Bearer token）
+                String authHeader = request.getHeader("Authorization");
+                if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                    return authHeader.substring(7).trim();
+                }
+                return null;
+            default:
+                logger.warn("未知客户端类型: {}", clientType);
+                return null;
+        }
+    }
+
 }

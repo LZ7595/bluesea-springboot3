@@ -1,5 +1,6 @@
 package com.example.backend.Controller;
 
+import com.example.backend.Entity.PageResult;
 import com.example.backend.Entity.Product;
 import com.example.backend.Entity.ProductResponse;
 import com.example.backend.Service.RecommendationService;
@@ -23,6 +24,14 @@ public class RecommendationController {
             @PathVariable int topN,
             @RequestParam(required = false) Long targetProductId) throws IOException {
         List<ProductResponse> recommendedProducts = recommendationService.recommendProducts(topN, targetProductId);
+        return ResponseEntity.ok().body(recommendedProducts);
+    }
+
+    @GetMapping("/list")
+    public ResponseEntity<PageResult<ProductResponse>> recommendProductsList(@RequestParam int pageNum, @RequestParam int pageSize, @RequestParam String sessionId, @RequestParam(required = false) Long targetProductId) throws IOException {
+        PageResult<ProductResponse> recommendedProducts = recommendationService.recommendProductsList(pageNum, pageSize, sessionId, targetProductId);
+        System.out.println(recommendedProducts);
+
         return ResponseEntity.ok().body(recommendedProducts);
     }
 }

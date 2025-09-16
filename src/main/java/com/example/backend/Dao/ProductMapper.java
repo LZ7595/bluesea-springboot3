@@ -185,7 +185,98 @@ public interface ProductMapper {
             "                           WHERE o.user_id = #{userId} AND oi.product_id = #{productId} AND o.order_status != 'CANCELED')")
     List<ProductPromotion> getAvailablePromotions(@Param("userId") Integer userId, @Param("productId") Long productId);
 
+    /**
+     * 查询用户之前使用过的商品促销 ID（批量版）
+     *
+     * @param userId     用户 ID
+     * @param productIds 商品 ID 列表
+     * @return 促销 ID 列表
+     */
+    @Select("<script>" +
+            "SELECT oi.promotion_id " +
+            "FROM order_item oi " +
+            "JOIN `order` o ON oi.order_id = o.order_id " +
+            "WHERE o.user_id = #{userId} " +
+            "  AND oi.product_id IN " +
+            "    <foreach collection='productIds' item='item' open='(' separator=',' close=')'>" +
+            "      #{item}" +
+            "    </foreach> " +
+            "  AND o.order_status != 'CANCELED'" +
+            "</script>")
+    List<Long> getUserUsedPromotionsBatch(
+            @Param("userId") Integer userId,
+            @Param("productIds") List<Long> productIds);
 
+    /**
+     * 查询商品当前可用的促销信息（批量版，含商品基础库存）
+     * @param userId     用户ID
+     * @param productIds 商品ID列表
+     * @return 可用促销信息列表（含商品基础库存）
+     */
+    @Select("<script>" +
+            "SELECT pp.*, p.price, p.stock AS product_stock " + // 新增 p.stock：商品基础库存
+            "FROM productpromotion pp " +
+            "JOIN product p ON pp.product_id = p.product_id " +
+            "WHERE pp.product_id IN " +
+            "    <foreach collection='productIds' item='item' open='(' separator=',' close=')'>" +
+            "      #{item}" +
+            "    </foreach> " +
+            "  AND pp.start_time <= NOW() " + // 促销已开始
+            "  AND (pp.end_time IS NULL OR pp.end_time >= NOW()) " + // 促销未结束
+            "  AND pp.promotion_stock > 0 " + // 活动库存充足
+            "  AND p.stock > 0 " + // 商品基础库存充足（新增）
+            "</script>") // 移除原 NOT IN 子查询，改在Java代码中判断限购
+    List<ProductPromotion> getAvailablePromotionsBatch(
+            @Param("userId") Integer userId,
+            @Param("productIds") List<Long> productIds);
+
+    /**
+     * 查询用户对每个促销的已使用次数（批量版）
+     * @param userId     用户ID
+     * @param productIds 商品ID列表（过滤范围）
+     * @return Map<Long, Integer>  key：promotion_id（促销ID），value：已使用次数
+     */
+    @Select("<script>" +
+            "SELECT oi.promotion_id, COUNT(oi.promotion_id) AS used_count " +
+            "FROM order_item oi " +
+            "JOIN `order` o ON oi.order_id = o.order_id " +
+            "WHERE o.user_id = #{userId} " +
+            "  AND oi.product_id IN " +
+            "    <foreach collection='productIds' item='item' open='(' separator=',' close=')'>" +
+            "      #{item}" +
+            "    </foreach> " +
+            "  AND o.order_status != 'CANCELED' " +
+            "  AND oi.promotion_id IS NOT NULL " + // 过滤无促销的订单
+            "GROUP BY oi.promotion_id " + // 按促销ID分组统计次数
+            "</script>")
+    Map<Long, Integer> getPromotionUsedCountByUser(
+            @Param("userId") Integer userId,
+            @Param("productIds") List<Long> productIds);
+
+    /**
+     * 批量查询商品基础信息（含基础库存）
+     * @param productIds 商品ID列表
+     * @return 商品列表
+     */
+    @Select("<script>" +
+            "SELECT product_id, price, stock " +
+            "FROM product " +
+            "WHERE product_id IN " +
+            "    <foreach collection='productIds' item='item' open='(' separator=',' close=')'>" +
+            "      #{item}" +
+            "    </foreach> " +
+            "</script>")
+    List<Product> getProductBaseInfoBatch(@Param("productIds") List<Long> productIds);
+
+    @Select("SELECT pp.*, p.price " +
+            "FROM productpromotion pp " +
+            "JOIN product p ON pp.product_id = p.product_id " +
+            "WHERE pp.product_id = #{productId} " +
+            "  AND pp.start_time <= NOW() " +
+            "  AND (pp.end_time IS NULL OR pp.end_time >= NOW()) " +
+            "  AND pp.promotion_stock > 0 " +
+            "  AND p.stock > 0")
+    List<ProductPromotion> getAvailablePromotionsForAnonymous(@Param("productId") Long productId);
     @Update("UPDATE product SET stock = stock + #{quantity} WHERE product_id = #{productId}")
     void updateProductStock(Long productId, int quantity);
 }

@@ -67,7 +67,7 @@ alipay:
   alipayPublicKey: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxjUD0KbypKA1US5y3Jzlydywks94hMFN9V436erYrkMV/Vy9SSJZMw5R89y0oklG5veEmPpitszxlkWLNT4BYVMi3YE0HaiUKrGt4yPC1I02YeqjqCx7jaMtNGXq/G0y+QQ+yGKQYOtqWyMA6p4G7C9emrF018R8EVUhPux+Q0Mx1D3UERIndHnMYRpMpMD53RnCMpbCJRJqHHT0GhOoDC0RQh0nH5Rj327OQV/KHWF9z6gIN6BtzE/4z61D1VHPj89LjEOoDvcAkjaaMdehSrXCPS2KVt69SO1niu1U2T6xYUfcm0opibWWNcjvQmAiObPynwNpJHk/sYrs4zaySQIDAQAB
   gatewayUrl: https://openapi-sandbox.dl.alipaydev.com/gateway.do
   returnUrl: http://localhost:5173/pc/order/
-  notifyUrl: http://frp-aim.com:16000/order/pay/notify
+  notifyUrl: http://frp-fly.com:12435/order/pay/notify
 
 jwt:
   access:
@@ -75,4 +75,4 @@ jwt:
     expiration: 3600000  # 1小时（毫秒）
   refresh:
     secret: BlueSeaTechnologyUsedDigitalMallRefreshKey123456
-    expiration: 604800000  # 7天（毫秒）
+    expiration: 259200000  # 3天（毫秒）

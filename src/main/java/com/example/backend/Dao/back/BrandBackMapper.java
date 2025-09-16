@@ -44,7 +44,6 @@ public interface BrandBackMapper {
     int updateBrand(@Param("brand") Brand brand);
 
 
-
     @Insert("INSERT INTO brand (brand_name, status, brand_description, logo, create_time, update_time) " +
             "SELECT #{brand.brand_name}, #{brand.status}, #{brand.brand_description}, #{brand.logo}, NOW(), NOW() ")
     int addBrand(@Param("brand") Brand brand);
@@ -64,13 +63,17 @@ public interface BrandBackMapper {
     int deleteBrandMore(@Param("brandIdList") List<Long> brandIdList);
 
     @Select("<script>" +
-            "SELECT brand_name AS label, brand_id AS value FROM brand " +
+            "SELECT DISTINCT b.brand_name AS label, b.brand_id AS value FROM brand b " +
+            "JOIN brand_category_relation bcr ON b.brand_id = bcr.brand_id " +
             "<where>" +
             "    <if test='keyword != null and keyword != \"\"'>" +
-            "        brand_name LIKE CONCAT('%', #{keyword}, '%')" +
+            "        b.brand_name LIKE CONCAT('%', #{keyword}, '%')" +
+            "    </if>" +
+            "    <if test='categoryId != null'>" +
+            "        AND bcr.category_id = #{categoryId}" +
             "    </if>" +
             "</where>" +
-            "ORDER BY brand_id ASC " +
+            "ORDER BY b.brand_id ASC " +
             "</script>")
-    List<BrandList> getBrandList(@Param("keyword") String keyword);
+    List<BrandList> getBrandList(@Param("keyword") String keyword, @Param("categoryId") Long categoryId);
 }

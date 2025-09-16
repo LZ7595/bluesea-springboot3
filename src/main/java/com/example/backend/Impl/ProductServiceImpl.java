@@ -1,21 +1,30 @@
 package com.example.backend.Impl;
 
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.example.backend.Dao.*;
 import com.example.backend.Entity.*;
 import com.example.backend.Service.ProductService;
 import com.example.backend.Utils.PromotionDiscountCalculator;
+import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import static com.example.backend.Utils.RedisConstants.*;
 
 @Service
 public class ProductServiceImpl implements ProductService {
 
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
     @Autowired
     private ProductMapper productMapper;
     @Autowired
@@ -29,10 +38,32 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ResponseEntity<ProductDetails> getProductDetails(Long productId, Integer userId) {
+        String redisKey = PRODUCT_DETAILS_KEY + productId;
+        // 区分登录/未登录用户的缓存键（修复匿名用户缓存键问题）
+        String cacheKey = userId != null
+                ? PRODUCT_PROMOTIONS_KEY + productId + ":user:" + userId
+                : PRODUCT_PROMOTIONS_KEY + productId + ":anonymous";
+
+        // 1. 尝试从Redis获取缓存
+        String cachedDetails = stringRedisTemplate.opsForValue().get(redisKey);
+        if (StrUtil.isNotBlank(cachedDetails)) {
+            String cachedPromotions = stringRedisTemplate.opsForValue().get(cacheKey);
+            if (StrUtil.isNotBlank(cachedPromotions)) {
+                // 缓存命中：反序列化商品详情和促销包装类
+                ProductDetails productDetails = JSONUtil.toBean(cachedDetails, ProductDetails.class);
+                ProductPromotionWrapper promotionWrapper = JSONUtil.toBean(cachedPromotions, ProductPromotionWrapper.class);
+                productDetails.setPromotionWrapper(promotionWrapper); // 设置促销包装类
+                return ResponseEntity.ok(productDetails);
+            }
+        }
+
+        // 2. 缓存未命中：从数据库查询基础信息
         Product product = productMapper.getProductById(productId);
         if (product == null) {
+            stringRedisTemplate.opsForValue().set(redisKey, "{}", 5, TimeUnit.MINUTES);
             throw new RuntimeException("Product not found with id: " + productId);
         }
+
         Category category = categoryMapper.getCategoryById(product.getCategory_id());
         Brand brand = brandMapper.getBrandById(product.getBrand_id());
         if (category == null || brand == null) {
@@ -40,39 +71,122 @@ public class ProductServiceImpl implements ProductService {
         }
 
         List<ProductImage> productImages = productImageMapper.getProductImagesByProductId(productId);
-        List<String> imageUrls = new ArrayList<>();
-        for (ProductImage image : productImages) {
-            imageUrls.add(image.getImage_url());
+        List<String> imageUrls = productImages.stream()
+                .map(ProductImage::getImage_url)
+                .collect(Collectors.toList());
+
+        // 3. 处理促销信息（核心修改：区分可用/不可用）
+        ProductPromotionWrapper promotionWrapper = new ProductPromotionWrapper();
+
+        if (userId == null) {
+            // 3.1 未登录用户：只展示基础可用促销（不考虑限购次数）
+            List<ProductPromotion> allPromotions = productMapper.getAvailablePromotionsForAnonymous(productId);
+            promotionWrapper.setUsablePromotions(filterAnonymousUsablePromotions(allPromotions, product.getStock()));
+            promotionWrapper.setUnusablePromotions(Collections.emptyList());
+        } else {
+            // 3.2 已登录用户：查询并区分可用/不可用促销
+            List<Long> usedPromotionIds = productMapper.getUserUsedPromotions(userId, productId);
+            Map<Long, Integer> usedCountMap = productMapper.getPromotionUsedCountByUser(
+                    userId,
+                    Collections.singletonList(productId) // 单个商品ID转为列表
+            );
+            List<ProductPromotion> allPromotions = productMapper.getAvailablePromotions(userId, productId);
+
+            splitUsableAndUnusablePromotions(
+                    allPromotions, usedPromotionIds, usedCountMap,
+                    product.getStock(), promotionWrapper
+            );
         }
 
-        // 查询用户之前使用过的促销 ID
-        List<Long> usedPromotions = productMapper.getUserUsedPromotions(userId, productId);
-        System.out.println("sss" + usedPromotions);
-        // 查询当前可用的促销信息
-        List<ProductPromotion> availablePromotions = productMapper.getAvailablePromotions(userId, productId);
-        // 移除用户已经使用过的促销信息
-        availablePromotions.removeIf(promotion -> usedPromotions.contains(promotion.getPromotion_id()));
+        // 4. 计算最佳价格（从可用促销中取最低折扣价）
+        BigDecimal bestPrice = promotionWrapper.getUsablePromotions().stream()
+                .map(ProductPromotion::getDiscount_price)
+                .min(BigDecimal::compareTo)
+                .orElse(product.getPrice()); // 无可用促销则用原价
 
-        System.out.println("可用促销: " + availablePromotions);
-        // 遍历商品促销列表，根据促销类型计算折扣价格
-        for (ProductPromotion promotion : availablePromotions) {
-            BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(promotion);
-            // 设置计算得到的折扣价格
-            promotion.setDiscount_price(discountPrice);
-        }
-        return ResponseEntity.ok().body(new ProductDetails(
+        // 5. 构建商品详情对象（使用新实体类的构造参数）
+        ProductDetails productDetails = new ProductDetails(
                 product.getProduct_id(),
                 product.getProduct_name(),
                 category.getCategory_name(),
                 brand.getBrand_name(),
                 product.getProduct_description(),
-                product.getPrice(),
+                product.getPrice(), // 原价
+                bestPrice, // 最佳优惠价（新增）
                 product.getQuality(),
                 product.getStock(),
                 imageUrls,
-                availablePromotions
-        ));
+                promotionWrapper // 促销包装类（替换原availablePromotions）
+        );
+
+        // 6. 存入Redis缓存（缓存促销包装类而非原始列表）
+        stringRedisTemplate.opsForValue().set(redisKey, JSONUtil.toJsonStr(productDetails), 30, TimeUnit.MINUTES);
+        stringRedisTemplate.opsForValue().set(cacheKey, JSONUtil.toJsonStr(promotionWrapper), 10, TimeUnit.MINUTES);
+
+        return ResponseEntity.ok(productDetails);
     }
+
+    /**
+     * 过滤未登录用户的可用促销（仅判断活动库存和商品库存）
+     */
+    private List<ProductPromotion> filterAnonymousUsablePromotions(List<ProductPromotion> promotions, int productStock) {
+        return promotions.stream()
+                .filter(p -> p.getPromotion_quantity() > 0 && productStock > 0)
+                .peek(p -> {
+                    BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(p);
+                    p.setDiscount_price(discountPrice);
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 区分已登录用户的可用/不可用促销（核心逻辑）
+     */
+    private void splitUsableAndUnusablePromotions(
+            List<ProductPromotion> allPromotions,
+            List<Long> usedPromotionIds,
+            Map<Long, Integer> usedCountMap,
+            int productStock,
+            ProductPromotionWrapper wrapper) {
+
+        List<ProductPromotion> usable = new ArrayList<>();
+        List<UnusablePromotion> unusable = new ArrayList<>();
+
+        for (ProductPromotion promotion : allPromotions) {
+            Long promotionId = promotion.getPromotion_id();
+            int perUserLimit = promotion.getPer_user_limit();
+            int usedCount = usedCountMap.getOrDefault(promotionId, 0);
+            int availableCount = perUserLimit - usedCount;
+            int promotionStock = promotion.getPromotion_quantity();
+
+            // 计算折扣价
+            BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(promotion);
+            promotion.setDiscount_price(discountPrice);
+
+            // 判断可用状态
+            if (availableCount > 0 && promotionStock > 0 && productStock > 0) {
+                usable.add(promotion);
+            } else {
+                // 生成不可用原因
+                String reason = getUnusableReason(availableCount, promotionStock, productStock);
+                unusable.add(new UnusablePromotion(promotion, reason, usedCount, availableCount));
+            }
+        }
+
+        wrapper.setUsablePromotions(usable);
+        wrapper.setUnusablePromotions(unusable);
+    }
+
+    /**
+     * 生成促销不可用的具体原因
+     */
+    private String getUnusableReason(int availableCount, int promotionStock, int productStock) {
+        if (availableCount <= 0) return "已达每人限购次数";
+        if (promotionStock <= 0) return "活动库存不足";
+        if (productStock <= 0) return "商品库存不足";
+        return "促销暂不可用";
+    }
+
 
     @Override
     public ResponseEntity<List<Map<String, Object>>> selectNewList(int num) {
@@ -158,7 +272,7 @@ public class ProductServiceImpl implements ProductService {
                     // 创建 ProductResponse 对象并设置相关信息
                     return new ProductResponse(product, cheapestPromotion);
                 }).collect(Collectors.toList());
-                PageResult<ProductResponse> PageResult = new PageResult<>(responseList,total);
+                PageResult<ProductResponse> PageResult = new PageResult<>(responseList, total, page, size, (int) Math.ceil((double) total / size));
                 return ResponseEntity.ok().body(PageResult);
             }
         } catch (Exception e) {
@@ -167,6 +281,7 @@ public class ProductServiceImpl implements ProductService {
         }
         return ResponseEntity.status(404).body(null);
     }
+
     @Override
     public ResponseEntity<?> selectOrderPhoneProductList(int page, int size, String sortField, String sortOrder) {
         try {
@@ -204,7 +319,7 @@ public class ProductServiceImpl implements ProductService {
 
                     return new ProductResponse(product, cheapestPromotion);
                 }).collect(Collectors.toList());
-                PageResult<ProductResponse> PageResult = new PageResult<>(responseList,total);
+                PageResult<ProductResponse> PageResult = new PageResult<>(responseList, total, page, size, (int) Math.ceil((double) total / size));
                 return ResponseEntity.ok().body(PageResult);
             }
         } catch (Exception e) {
@@ -213,7 +328,7 @@ public class ProductServiceImpl implements ProductService {
         return ResponseEntity.status(404).body(null);
     }
 
-    public ResponseEntity<?> selectCategoryProductList(List<String> categoryName, int page, int size, String sortField, String sortOrder){
+    public ResponseEntity<?> selectCategoryProductList(List<String> categoryName, int page, int size, String sortField, String sortOrder) {
         try {
             int offset = (page - 1) * size;
             List<Product> OtherPhoneProductList = productMapper.getProductListByCategoryName(categoryName, offset, size, sortField, sortOrder);
@@ -248,7 +363,7 @@ public class ProductServiceImpl implements ProductService {
 
                     return new ProductResponse(product, cheapestPromotion);
                 }).collect(Collectors.toList());
-                PageResult<ProductResponse> PageResult = new PageResult<>(responseList,total);
+                PageResult<ProductResponse> PageResult = new PageResult<>(responseList, total, page, size, (int) Math.ceil((double) total / size));
                 return ResponseEntity.ok().body(PageResult);
             }
         } catch (Exception e) {
@@ -257,7 +372,7 @@ public class ProductServiceImpl implements ProductService {
         return ResponseEntity.status(404).body(null);
     }
 
-    public ResponseEntity<?> SearchProductList(Integer selectedCategory, Integer selectedBrand, String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize){
+    public ResponseEntity<?> SearchProductList(Integer selectedCategory, Integer selectedBrand, String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize) {
         try {
             System.out.println(searchKeyword);
             Map<String, Object> params = new HashMap<>();
@@ -274,7 +389,7 @@ public class ProductServiceImpl implements ProductService {
             countParams.put("selectedBrand", selectedBrand);
             countParams.put("searchKeyword", searchKeyword);
             int total = productMapper.getSearchProductTotal(countParams);
-            if( productList != null){
+            if (productList != null) {
                 List<ProductResponse> responseList = productList.stream().map(product -> {
                     // 获取产品ID
                     Long productId = product.getProduct_id();
@@ -301,13 +416,13 @@ public class ProductServiceImpl implements ProductService {
                             }
                         }
                     }
-                   
+
                     return new ProductResponse(product, cheapestPromotion);
                 }).collect(Collectors.toList());
-                PageResult<ProductResponse> PageResult = new PageResult<>(responseList,total);
+                PageResult<ProductResponse> PageResult = new PageResult<>(responseList, total, currentPage, pageSize, (int) Math.ceil((double) total / pageSize));
                 return ResponseEntity.ok().body(PageResult);
             }
-        } catch (Exception e){
+        } catch (Exception e) {
             return ResponseEntity.status(500).body(null);
         }
         return ResponseEntity.status(404).body(null);
@@ -330,7 +445,7 @@ public class ProductServiceImpl implements ProductService {
                 ProductImage main_img = productImageMapper.getProductMainImageByProductId(productId);
                 productDetails.setProduct_main_image(main_img.getImage_url());
                 // 筛选出最优惠的促销活动
-                ProductPromotion bestPromotion = findBestPromotion(availablePromotions,productDetails.getPrice());
+                ProductPromotion bestPromotion = findBestPromotion(availablePromotions, productDetails.getPrice());
                 System.out.println(bestPromotion);
                 if (bestPromotion != null) {
                     productDetails.setPromotions(List.of(bestPromotion));
@@ -342,7 +457,6 @@ public class ProductServiceImpl implements ProductService {
         }
         return result;
     }
-
 
 
     private ProductPromotion findBestPromotion(List<ProductPromotion> promotions, BigDecimal price) {

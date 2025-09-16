@@ -85,7 +85,9 @@ public class ProductBackServiceImpl implements ProductBackService {
                             product.getProduct_id(),
                             product.getProduct_name(),
                             product.isStatus(),
+                            category.getCategory_id(),
                             category.getCategory_name(),
+                            brand.getBrand_id(),
                             brand.getBrand_name(),
                             product.getProduct_description(),
                             product.getPrice(),
@@ -99,7 +101,7 @@ public class ProductBackServiceImpl implements ProductBackService {
                             promotions
                     );
                 }).collect(Collectors.toList());
-                PageResult<ProductDetailsBack> pageResult = new PageResult<>(responseList, total);
+                PageResult<ProductDetailsBack> pageResult = new PageResult<>(responseList, total,currentPage, pageSize, (int) Math.ceil((double) total / pageSize));
                 return ResponseEntity.ok().body(pageResult);
             }
         } catch (Exception e) {

@@ -11,5 +11,5 @@ public interface ReviewService {
     int updateReview(ProductReview review);
     List<ProductReview> getReviewsByOrderId(Integer orderId);
 
-    ResponseEntity<?> getReviewsByProductId(Integer productId, int currentPage, int pageSize);
+    ResponseEntity<?> getReviewsByProductId(Long productId, int currentPage, int pageSize);
 }

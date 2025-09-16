@@ -57,7 +57,7 @@ public class PromotionBackServiceImpl implements PromotionBackService {
 
                     return promotion;
                 }).collect(Collectors.toList());
-                PageResult<PromotionBack> pageResult = new PageResult<>(responseList, total);
+                PageResult<PromotionBack> pageResult = new PageResult<>(responseList, total,currentPage, pageSize, (int) Math.ceil((double) total / pageSize));
                 return ResponseEntity.ok().body(pageResult);
             }
         } catch (Exception e) {

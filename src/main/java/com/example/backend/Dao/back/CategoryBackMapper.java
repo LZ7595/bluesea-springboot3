@@ -45,13 +45,17 @@ public interface CategoryBackMapper {
     int deleteCategoryMore(@Param("categoryIdList") List<Long> categoryIdList);
 
     @Select("<script>" +
-            "SELECT category_name AS label, category_id AS value FROM category " +
+            "SELECT DISTINCT c.category_name AS label, c.category_id AS value FROM category c " +
+            "JOIN brand_category_relation bcr ON c.category_id = bcr.category_id " +
             "<where>" +
             "    <if test='keyword != null and keyword != \"\"'>" +
-            "        category_name LIKE CONCAT('%', #{keyword}, '%')" +
+            "        c.category_name LIKE CONCAT('%', #{keyword}, '%')" +
+            "    </if>" +
+            "    <if test='brandId != null'>" +
+            "        AND bcr.brand_id = #{brandId}" +
             "    </if>" +
             "</where>" +
-            "ORDER BY category_id ASC " +
+            "ORDER BY c.category_id ASC " +
             "</script>")
-    List<BrandList> getCategoryList(@Param("keyword") String keyword);
+    List<BrandList> getCategoryList(@Param("keyword") String keyword,@Param("brandId") Long brandId);
 }

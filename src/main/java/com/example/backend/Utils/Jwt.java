@@ -186,4 +186,17 @@ public class Jwt {
         // 如果剩余有效期小于总有效期的阈值比例，则认为即将过期
         return (double) remainingValidity / totalValidity < threshold;
     }
+
+    /**
+     * 获取令牌的剩余过期时间
+     * @param token 令牌
+     * @return 剩余过期时间（毫秒），如果令牌已过期返回负数
+     */
+    public long getRemainingTime(String token) {
+        Claims claims = parseToken(token);
+        Date expiration = claims.getExpiration();
+        Date now = new Date();
+
+        return expiration.getTime() - now.getTime();
+    }
 }

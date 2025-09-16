@@ -17,7 +17,9 @@ public class ProductDetailsBack {
     private Long product_id;
     private String product_name;
     private boolean status;
+    private Long category_id;
     private String category_name;
+    private Long brand_id;
     private String brand_name;
     private String product_description;
     private BigDecimal price;

@@ -11,6 +11,7 @@ import com.alipay.api.response.AlipayTradePagePayResponse;
 import com.example.backend.Dao.*;
 import com.example.backend.Entity.*;
 import com.example.backend.Service.OrderService;
+import com.example.backend.Utils.PromotionDiscountCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.UnsupportedEncodingException;
+import java.math.BigDecimal;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -56,6 +58,114 @@ public class OrderServiceImpl implements OrderService {
     private String returnUrl;
     @Value("${alipay.notifyUrl}")
     private String notifyUrl;
+
+    public ResponseEntity<?> verifyGoodsForUser(Integer userId, List<Map<String, Object>> goodsList){
+        System.out.println(userId);
+        System.out.println(goodsList);
+        List<Long> productIds = goodsList.stream()
+                // 过滤掉product_id为null的元素
+                .filter(goods -> goods.get("product_id") != null)
+                // 提取product_id并转换为Long类型
+                .map(goods -> {
+                    Object productIdObj = goods.get("product_id");
+                    if (productIdObj instanceof Number) {
+                        return ((Number) productIdObj).longValue();
+                    } else if (productIdObj instanceof String) {
+                        return Long.parseLong((String) productIdObj);
+                    } else {
+                        // 对于不支持的类型，返回null（后续会被过滤）
+                        return null;
+                    }
+                })
+                // 过滤掉转换失败的null值
+                .filter(productId -> productId != null)
+                // 收集结果为List
+                .toList();
+        // 2. 批量查询3个核心数据：
+        // 2.1 商品基础信息（含基础库存，若上面SQL已查则可省略）
+        Map<Long, Product> productMap = productMapper.getProductBaseInfoBatch(productIds).stream()
+                .collect(Collectors.toMap(Product::getProduct_id, p -> p));
+
+        // 2.2 所有可用促销（含活动库存、商品基础库存）
+        List<ProductPromotion> allPromotions = productMapper.getAvailablePromotionsBatch(userId, productIds);
+
+        // 2.3 用户对每个促销的已使用次数
+        Map<Long, Integer> promotionUsedCountMap = productMapper.getPromotionUsedCountByUser(userId, productIds);
+
+        // 3. 按商品ID分组，处理每个商品的促销状态
+        Map<Long, Map<String, Object>> productResultMap = new HashMap<>();
+        for (Long productId : productIds) {
+            Product product = productMap.get(productId);
+            if (product == null) continue; // 商品不存在，跳过
+
+            // 3.1 筛选当前商品的所有促销
+            List<ProductPromotion> productPromotions = allPromotions.stream()
+                    .filter(p -> p.getProduct_id().equals(productId))
+                    .collect(Collectors.toList());
+
+            // 3.2 区分“用过但还可用”和“完全不可用”的促销
+            List<Map<String, Object>> usablePromotions = new ArrayList<>(); // 用过但还可用
+            List<Map<String, Object>> unusablePromotions = new ArrayList<>(); // 完全不可用
+
+            for (ProductPromotion promotion : productPromotions) {
+                Long promotionId = promotion.getPromotion_id();
+                int perUserLimit = promotion.getPer_user_limit(); // 每人限购数
+                int usedCount = promotionUsedCountMap.getOrDefault(promotionId, 0); // 已用次数
+                int promotionStock = promotion.getPromotion_quantity(); // 活动库存
+                int productStock = product.getStock(); // 商品基础库存
+
+                // 计算当前促销的可用次数（限购数 - 已用次数）
+                int availableCount = perUserLimit - usedCount;
+
+                // 组装促销详情
+                Map<String, Object> promotionDetail = new HashMap<>();
+                promotionDetail.put("promotion_id", promotionId);
+                promotionDetail.put("promotion_type", promotion.getPromotion_type()); // 促销类型（如直降、满减）
+                promotionDetail.put("per_user_limit", perUserLimit);
+                promotionDetail.put("used_count", usedCount);
+                promotionDetail.put("available_count", availableCount); // 剩余可用次数
+                promotionDetail.put("promotion_stock", promotionStock);
+                promotionDetail.put("discount_price", PromotionDiscountCalculator.calculateDiscountPrice(promotion)); // 折扣价
+
+                // 判断促销状态
+                boolean isStillUsable = false;
+                if (availableCount > 0 && promotionStock > 0 && productStock > 0) {
+                    // 用过但还可用：剩余可用次数>0 + 活动库存>0 + 商品库存>0
+                    usablePromotions.add(promotionDetail);
+                    isStillUsable = true;
+                } else {
+                    // 完全不可用：补充不可用原因
+                    String reason = "";
+                    if (availableCount <= 0) reason = "已达每人限购次数";
+                    else if (promotionStock <= 0) reason = "活动库存不足";
+                    else if (productStock <= 0) reason = "商品基础库存不足";
+                    promotionDetail.put("unusable_reason", reason);
+                    unusablePromotions.add(promotionDetail);
+                }
+            }
+
+            // 3.3 计算当前商品的最佳价格（从“用过但还可用”的促销中取最低折扣价）
+            BigDecimal bestDiscountPrice = usablePromotions.stream()
+                    .map(d -> (BigDecimal) d.get("discount_price"))
+                    .min(BigDecimal::compareTo)
+                    .orElse(null);
+
+            // 3.4 组装当前商品的最终结果
+            Map<String, Object> productResult = new HashMap<>();
+            productResult.put("product_id", productId);
+            productResult.put("original_price", product.getPrice()); // 商品原价
+            productResult.put("latest_price", bestDiscountPrice != null ? bestDiscountPrice : product.getPrice()); // 最新价格（折扣价/原价）
+            productResult.put("product_stock", product.getStock()); // 商品基础库存
+            productResult.put("usable_promotions", usablePromotions); // 用过但还可用的促销
+            productResult.put("unusable_promotions", unusablePromotions); // 完全不可用的促销
+            productResult.put("has_usable_promotion", !usablePromotions.isEmpty()); // 是否有可用促销
+
+            productResultMap.put(productId, productResult);
+        }
+
+        // 4. 返回结构化结果（前端可清晰区分每种状态）
+        return ResponseEntity.ok().body(productResultMap);
+    }
 
     @Override
     @Transactional
@@ -250,7 +360,7 @@ public class OrderServiceImpl implements OrderService {
                     order.setOrder_images(imgUrls);
                     return order;
                 }).collect(Collectors.toList());
-                PageResult<OrderDisplay> PageResult  = new PageResult<>(orderDisplayList, total);
+                PageResult<OrderDisplay> PageResult  = new PageResult<>(orderDisplayList, total,currentPage, pageSize, (int) Math.ceil((double) total / pageSize));
                 return ResponseEntity.ok(PageResult);
             }else {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("未找到订单");

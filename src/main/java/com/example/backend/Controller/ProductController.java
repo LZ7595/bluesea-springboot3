@@ -18,7 +18,7 @@ public class ProductController {
     private ProductService productService;
 
     @GetMapping("/details")
-    public ResponseEntity<ProductDetails> getProductDetails(@RequestParam Long product_id, @RequestParam Integer user_id) {
+    public ResponseEntity<ProductDetails> getProductDetails(@RequestParam Long product_id, @RequestParam(required = false) Integer user_id) {
         return productService.getProductDetails(product_id, user_id);
     }
 

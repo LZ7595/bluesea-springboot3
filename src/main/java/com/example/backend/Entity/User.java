@@ -25,8 +25,8 @@ public class User {
     private LoginType lastLoginType;
 
     public enum Role {
-        Director,
         Admin,
+        Operator,
         User;
     }
 

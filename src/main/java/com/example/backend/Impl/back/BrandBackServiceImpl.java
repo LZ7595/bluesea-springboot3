@@ -69,9 +69,14 @@ public class BrandBackServiceImpl implements BrandBackService {
         return brandBackMapper.deleteBrandMore(brandIdList);
     }
 
+//    @Override
+//    public List<BrandList> getSelectList(String keyword) {
+//        return brandBackMapper.getBrandList(keyword);
+//    }
+
     @Override
-    public List<BrandList> getSelectList(String keyword) {
-        return brandBackMapper.getBrandList(keyword);
+    public List<BrandList> getSelectList(Long categoryId, String keyword){
+        return brandBackMapper.getBrandList(keyword,categoryId);
     }
 
     private void handleException(Exception e) {

@@ -13,6 +13,6 @@ public interface CategoryBackService {
 
     int deleteCategory(Long category_id);
     int deleteCategoryMore(List<Long> categoryIdList);
-    List<BrandList> getSelectList(String keyword);
+    List<BrandList> getSelectList(String keyword, Long brandId);
 
 }

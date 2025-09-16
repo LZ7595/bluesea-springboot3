@@ -41,7 +41,7 @@ public class ReviewController {
     }
 
     @GetMapping("/product/{productId}")
-    public ResponseEntity<?> getReviewsByProductId(@PathVariable("productId") Integer productId,
+    public ResponseEntity<?> getReviewsByProductId(@PathVariable("productId") Long productId,
                                                 @RequestParam(defaultValue = "1") int currentPage,
                                                 @RequestParam(defaultValue = "10") int pageSize) {
         return reviewService.getReviewsByProductId(productId,currentPage, pageSize);

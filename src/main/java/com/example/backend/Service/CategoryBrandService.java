@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface CategoryBrandService {
     List<CategoryBrandVO> getCategoryBrandList();
+
+    CategoryBrandVO getBrandListByCategoryName(String categoryName);
 }

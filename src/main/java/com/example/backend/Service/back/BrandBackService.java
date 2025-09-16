@@ -10,9 +10,16 @@ import java.util.Map;
 public interface BrandBackService {
 
     Map<String, Object> SearchBrandList(String searchKeyword, String sortField, String sortOrder, int currentPage, int pageSize);
+
     int updateBrand(Brand brand);
+
     int addBrand(Brand brand);
+
     int deleteBrand(Long brand_id);
+
     int deleteBrandMore(List<Long> brandIdList);
-    List<BrandList> getSelectList(String keyword);
+
+//    List<BrandList> getSelectList(String keyword);
+
+    List<BrandList> getSelectList(Long categoryId, String keyword);
 }

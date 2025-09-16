@@ -31,7 +31,7 @@ public class ReviewBackServiceImpl implements ReviewBackService {
             int total = reviewBackMapper.getSearchReviewTotal(countParams);
             System.out.println("total: " + total);
             if (total > 0) {
-                PageResult<ProductReview> PageResult = new PageResult<>(reviewList, total);
+                PageResult<ProductReview> PageResult = new PageResult<>(reviewList, total,currentPage, pageSize, (int) Math.ceil((double) total / pageSize));
                 return ResponseEntity.ok(PageResult);
             }else {
                 return ResponseEntity.status(404).body(null);

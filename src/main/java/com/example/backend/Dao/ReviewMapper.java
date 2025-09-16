@@ -23,8 +23,8 @@ public interface ReviewMapper {
             "WHERE pr.product_id = #{productId} AND pr.status = true " +
             "ORDER BY pr.review_time DESC " +
             "LIMIT #{offset}, #{pageSize}")
-    List<ProductReview> getReviewsByProductId(Integer productId,int offset, int pageSize);
+    List<ProductReview> getReviewsByProductId(Long productId,int offset, int pageSize);
 
     @Select("SELECT COUNT(*) FROM productreview WHERE product_id = #{productId} AND status = true ")
-    int getReviewCountByProductId(Integer productId);
+    int getReviewCountByProductId(Long productId);
 }

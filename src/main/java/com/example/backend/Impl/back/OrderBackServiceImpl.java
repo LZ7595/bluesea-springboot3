@@ -74,7 +74,7 @@ public class OrderBackServiceImpl implements OrderBackService {
                             order.getExpress_time()
                     );
                 }).collect(Collectors.toList());
-                PageResult<OrderDetailsBack> PageResult = new PageResult<>(responseList, total);
+                PageResult<OrderDetailsBack> PageResult = new PageResult<>(responseList, total,currentPage, pageSize, (int) Math.ceil((double) total / pageSize));
                 return ResponseEntity.ok().body(PageResult);
             }
         } catch (Exception e) {

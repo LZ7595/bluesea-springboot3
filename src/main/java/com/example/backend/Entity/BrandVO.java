@@ -14,5 +14,6 @@ public class BrandVO implements Serializable {
 
     private Integer brand_id;
     private String brand_name;
+    private String logo;
     private Integer category_id; // 通过关联表查询时添加
 }

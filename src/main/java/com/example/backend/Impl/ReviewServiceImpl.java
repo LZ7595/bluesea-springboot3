@@ -44,11 +44,11 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    public ResponseEntity<?> getReviewsByProductId(Integer productId, int currentPage, int pageSize) {
+    public ResponseEntity<?> getReviewsByProductId(Long productId, int currentPage, int pageSize) {
         int offset = (currentPage - 1) * pageSize;
         List<ProductReview> reviews = reviewMapper.getReviewsByProductId(productId, offset, pageSize);
         int total = reviewMapper.getReviewCountByProductId(productId);
-        PageResult<ProductReview> PageResult = new PageResult<>(reviews, total);
+        PageResult<ProductReview> PageResult = new PageResult<>(reviews, total,currentPage, pageSize, (int) Math.ceil((double) total / pageSize));
         return ResponseEntity.ok(PageResult);
     }
 }

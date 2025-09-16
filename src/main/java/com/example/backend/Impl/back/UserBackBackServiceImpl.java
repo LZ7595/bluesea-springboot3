@@ -34,7 +34,7 @@ public class UserBackBackServiceImpl implements UserBackService {
             int total = userBackMapper.getSearchUserTotal(countParams);
             System.out.println(userList);
             if (userList != null) {
-                PageResult<UserDetailsBack> pageResult = new PageResult<>(userList, total);
+                PageResult<UserDetailsBack> pageResult = new PageResult<>(userList, total,currentPage, pageSize, (int) Math.ceil((double) total / pageSize));
                 return ResponseEntity.ok().body(pageResult);
             }
         } catch (Exception e) {
