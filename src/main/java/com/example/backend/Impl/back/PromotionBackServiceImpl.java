@@ -168,15 +168,23 @@ public class PromotionBackServiceImpl implements PromotionBackService {
     }
 
     private boolean shouldUpdatePromotion(PromotionBack newPromotion, PromotionBack existingPromotion) {
+        // 1. 优惠类型变化检测
         boolean typeChanged = newPromotion.getPromotion_type() == null ?
                 existingPromotion.getPromotion_type() != null :
                 !newPromotion.getPromotion_type().equals(existingPromotion.getPromotion_type());
 
+        // 2. 时间范围变化检测
         boolean timeChanged = !isSameDate(newPromotion.getStart_time(), existingPromotion.getStart_time()) ||
                 !isSameDate(newPromotion.getEnd_time(), existingPromotion.getEnd_time());
 
-        boolean numChanged = newPromotion.getPer_user_limit() == existingPromotion.getPer_user_limit() || newPromotion.getPromotion_quantity() == existingPromotion.getPromotion_quantity()
-                || newPromotion.getPromotion_stock() == existingPromotion.getPromotion_stock() || existingPromotion.getPromotion_stock() == null || existingPromotion.getPer_user_limit() == null;
+        // 3. 数量相关字段变化检测（核心修正）
+        // 原逻辑错误：使用||判断，只要有一个字段相等就认为没变化，这与需求相反
+        boolean numChanged =
+                !equals(newPromotion.getPer_user_limit(), existingPromotion.getPer_user_limit()) ||
+                        !equals(newPromotion.getPromotion_quantity(), existingPromotion.getPromotion_quantity()) ||
+                        !equals(newPromotion.getPromotion_stock(), existingPromotion.getPromotion_stock());
+
+        // 4. 金额/折扣率变化检测
         boolean amountOrRateChanged = false;
         if ("REDUCE_AMOUNT".equals(existingPromotion.getPromotion_type())) {
             amountOrRateChanged = !isSameBigDecimal(newPromotion.getReduce_amount(), existingPromotion.getReduce_amount());
@@ -184,12 +192,15 @@ public class PromotionBackServiceImpl implements PromotionBackService {
             amountOrRateChanged = !isSameBigDecimal(newPromotion.getDiscount_rate(), existingPromotion.getDiscount_rate());
         }
 
-        System.out.println(typeChanged);
-        System.out.println(timeChanged);
-        System.out.println(amountOrRateChanged);
-        System.out.println(numChanged);
-
+        // 只要有一个字段变化，就需要更新
         return typeChanged || timeChanged || amountOrRateChanged || numChanged;
+    }
+
+    // 新增：Integer类型比对工具方法（处理null值）
+    private boolean equals(Integer a, Integer b) {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        return a.equals(b);
     }
 
     private boolean isSameDate(Date date1, Date date2) {

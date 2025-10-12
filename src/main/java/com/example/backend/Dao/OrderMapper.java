@@ -10,8 +10,19 @@ import java.util.List;
 
 @Mapper
 public interface OrderMapper {
-    @Insert("INSERT INTO `order` (user_id, order_no, total_amount, discount_amount, payment_amount, order_status, address_id) " +
-            "VALUES (#{user_id}, #{order_no}, #{total_amount}, #{discount_amount}, #{payment_amount}, #{order_status},#{address_id})")
+    /**
+     * 插入订单记录（不含payment_type字段）
+     * @param order 订单实体
+     */
+    @Insert("INSERT INTO `order` (" +
+            "user_id, order_no, method, total_amount, discount_amount, " +
+            "goods_amount, shipping_fee, payment_amount, order_status, " +
+            "address_id, remark, create_time, update_time" +
+            ") VALUES (" +
+            "#{user_id}, #{order_no}, #{method}, #{total_amount}, #{discount_amount}, " +
+            "#{goods_amount}, #{shipping_fee}, #{payment_amount}, #{order_status}, " +
+            "#{address_id}, #{remark}, #{create_time}, #{update_time}" +
+            ")")
     @Options(useGeneratedKeys = true, keyProperty = "order_id")
     void insertOrder(Order order);
 

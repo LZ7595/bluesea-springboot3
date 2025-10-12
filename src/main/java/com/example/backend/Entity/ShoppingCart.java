@@ -18,7 +18,9 @@ public class ShoppingCart {
     private BigDecimal price;
     private Integer stock;
     private Integer quantity;
+    private String quality;
     private Integer is_selected;
-    private BigDecimal discount_price;
+    private BigDecimal bestPrice;
+    private ProductPromotionWrapper promotionWrapper;
 }
 

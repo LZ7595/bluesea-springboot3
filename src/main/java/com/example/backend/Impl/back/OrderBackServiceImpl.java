@@ -70,7 +70,8 @@ public class OrderBackServiceImpl implements OrderBackService {
                             order.getCreate_time(),
                             order.getUpdate_time(),
                             order.getPay_time(),
-                            order.getExpress(),
+                            order.getExpress_num(),
+                            order.getExpress_com(),
                             order.getExpress_time()
                     );
                 }).collect(Collectors.toList());

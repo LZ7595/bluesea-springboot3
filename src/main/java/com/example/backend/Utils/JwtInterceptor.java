@@ -118,14 +118,11 @@ public class JwtInterceptor implements HandlerInterceptor {
                 return getCookieValue(request, "refreshToken");
 
             case CLIENT_MINIPROGRAM:
-                // 小程序：从 Authorization 头提取（前端传递的是 "refreshToken=xxx" 格式，需截取值）
-                String authHeader = request.getHeader("Authorization");
+                // 小程序：从 refreshToken 头提取（前端传递的是 "refreshToken=xxx" 格式，需截取值）
+                String authHeader = request.getHeader("refreshToken");
                 if (authHeader != null && authHeader.startsWith("Bearer ")) {
                     String refreshTokenWithKey = authHeader.substring(7).trim();
-                    // 前端逻辑：refreshToken 存储格式是 "refreshToken=xxx"，需 split 取后面的值
-                    if (refreshTokenWithKey.startsWith("refreshToken=")) {
-                        return refreshTokenWithKey.split("=")[1].trim();
-                    }
+                        return refreshTokenWithKey;
                 }
                 logger.warn("小程序端 RefreshToken 格式错误，应为 Bearer refreshToken=xxx");
                 return null;
@@ -214,6 +211,14 @@ public class JwtInterceptor implements HandlerInterceptor {
     // -------------------------- 5. 拦截器核心逻辑（preHandle）--------------------------
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        String requestMethod = request.getMethod(); // GET/POST等
+        String requestPath = request.getRequestURI(); // 请求路径（如：/categoryBrand/brandList）
+        String clientIp = request.getRemoteAddr(); // 客户端IP
+
+        // 打印日志（用info级别，方便查看）
+        logger.info("【JWT拦截器】收到请求 -> 方法: {}, 路径: {}, 客户端IP: {}",
+                requestMethod, requestPath, clientIp);
+
         // 1. 按客户端类型提取 AccessToken 和 RefreshToken
         String accessToken = extractAccessTokenByClient(request);
         String refreshToken = extractRefreshTokenByClient(request);

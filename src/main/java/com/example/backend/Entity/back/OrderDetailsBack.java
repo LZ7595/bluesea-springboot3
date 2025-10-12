@@ -26,6 +26,7 @@ public class OrderDetailsBack {
     private Date create_time;
     private Date update_time;
     private Date pay_time;
-    private String express;
+    private String express_com;
+    private String express_num;
     private Date express_time;
 }

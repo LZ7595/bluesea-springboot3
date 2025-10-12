@@ -1,9 +1,6 @@
 package com.example.backend.Dao;
 
-import com.example.backend.Entity.Product;
-import com.example.backend.Entity.ProductDetails;
-import com.example.backend.Entity.ProductPayInfo;
-import com.example.backend.Entity.ProductPromotion;
+import com.example.backend.Entity.*;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -24,6 +21,7 @@ public interface ProductMapper {
     void updateProductStockAndSales(Product product);
 
 
+    // 修复：<= 转义为 &lt;=
     @Select("SELECT pp.*, p.product_name, p.price " +
             "FROM productpromotion pp " +
             "JOIN product p ON pp.product_id = p.product_id " +
@@ -92,7 +90,21 @@ public interface ProductMapper {
             "AND b.brand_id = #{selectedBrand} " +
             "</if> " +
             "<if test='searchKeyword != null and searchKeyword != \"\"'> " +
-            "AND (p.product_name LIKE CONCAT('%', #{searchKeyword}, '%') OR p.product_description LIKE CONCAT('%', #{searchKeyword}, '%')) " +
+            "AND ( " +
+            // 原始完整关键词搜索
+            "p.product_name LIKE CONCAT('%', #{searchKeyword}, '%') OR " +
+            "p.product_description LIKE CONCAT('%', #{searchKeyword}, '%') OR " +
+            // 拆分单个字符搜索
+            "<foreach collection='searchKeyword.split(\"\")' item='char' separator='OR'> " +
+            "(p.product_name LIKE CONCAT('%', #{char}, '%') OR p.product_description LIKE CONCAT('%', #{char}, '%')) " +
+            "</foreach> " +
+            // 如果需要按词语拆分搜索，可以使用特定分隔符(如空格)
+            "<if test='searchKeyword.contains(\" \")'> " +
+            "<foreach collection='searchKeyword.split(\" \")' item='word' separator='OR'> " +
+            "(p.product_name LIKE CONCAT('%', #{word}, '%') OR p.product_description LIKE CONCAT('%', #{word}, '%')) " +
+            "</foreach> " +
+            "</if> " +
+            ") " +
             "</if> " +
             "</where> " +
             "ORDER BY ${sortField} ${sortOrder} " +
@@ -123,19 +135,32 @@ public interface ProductMapper {
     int getProductTotalByCategoryName(@Param("categoryNames") List<String> categoryNames);
 
     @Select("<script>" +
-            "SELECT COUNT(*) " +
-            "FROM product p " +
+            "SELECT COUNT(*) FROM product p " +
             "JOIN category c ON p.category_id = c.category_id " +
             "JOIN brand b ON p.brand_id = b.brand_id " +
             "<where> " +
             "<if test='selectedCategory != null and selectedCategory != \"\"'> " +
-            "AND c.category_name = #{selectedCategory} " +
+            "AND c.category_id = #{selectedCategory} " +
             "</if> " +
             "<if test='selectedBrand != null and selectedBrand != \"\"'> " +
-            "AND b.brand_name = #{selectedBrand} " +
+            "AND b.brand_id = #{selectedBrand} " +
             "</if> " +
             "<if test='searchKeyword != null and searchKeyword != \"\"'> " +
-            "AND (p.product_name LIKE CONCAT('%', #{searchKeyword}, '%') OR p.product_description LIKE CONCAT('%', #{searchKeyword}, '%')) " +
+            "AND ( " +
+            // 原始完整关键词搜索
+            "p.product_name LIKE CONCAT('%', #{searchKeyword}, '%') OR " +
+            "p.product_description LIKE CONCAT('%', #{searchKeyword}, '%') OR " +
+            // 拆分单个字符搜索
+            "<foreach collection='searchKeyword.split(\"\")' item='char' separator='OR'> " +
+            "(p.product_name LIKE CONCAT('%', #{char}, '%') OR p.product_description LIKE CONCAT('%', #{char}, '%')) " +
+            "</foreach> " +
+            // 如果需要按词语拆分搜索，可以使用特定分隔符(如空格)
+            "<if test='searchKeyword.contains(\" \")'> " +
+            "<foreach collection='searchKeyword.split(\" \")' item='word' separator='OR'> " +
+            "(p.product_name LIKE CONCAT('%', #{word}, '%') OR p.product_description LIKE CONCAT('%', #{word}, '%')) " +
+            "</foreach> " +
+            "</if> " +
+            ") " +
             "</if> " +
             "</where> " +
             "</script>")
@@ -166,7 +191,7 @@ public interface ProductMapper {
     List<Long> getUserUsedPromotions(@Param("userId") Integer userId, @Param("productId") Long productId);
 
     /**
-     * 查询商品当前可用的促销信息
+     * 查询商品当前可用的促销信息（修复：<= 和 >= 转义）
      *
      * @param userId    用户 ID
      * @param productId 商品 ID
@@ -176,14 +201,11 @@ public interface ProductMapper {
             "FROM productpromotion pp " +
             "JOIN product p ON pp.product_id = p.product_id " +
             "WHERE pp.product_id = #{productId} " +
-            "  AND pp.start_time <= NOW() " +
-            "  AND (pp.end_time IS NULL OR pp.end_time >= NOW()) " +
-            "  AND pp.promotion_stock > 0 " +
-            "  AND pp.promotion_id NOT IN (SELECT oi.promotion_id " +
-            "                           FROM order_item oi " +
-            "                           JOIN `order` o ON oi.order_id = o.order_id " +
-            "                           WHERE o.user_id = #{userId} AND oi.product_id = #{productId} AND o.order_status != 'CANCELED')")
-    List<ProductPromotion> getAvailablePromotions(@Param("userId") Integer userId, @Param("productId") Long productId);
+            " AND pp.start_time <= NOW() " +
+            "  AND (pp.end_time IS NULL OR pp.end_time >= NOW())")
+    List<ProductPromotion> getAvailablePromotions(
+            @Param("userId") Integer userId,
+            @Param("productId") Long productId);
 
     /**
      * 查询用户之前使用过的商品促销 ID（批量版）
@@ -208,7 +230,8 @@ public interface ProductMapper {
             @Param("productIds") List<Long> productIds);
 
     /**
-     * 查询商品当前可用的促销信息（批量版，含商品基础库存）
+     * 查询商品当前可用的促销信息（批量版，含商品基础库存）（修复：<= 和 >= 转义）
+     *
      * @param userId     用户ID
      * @param productIds 商品ID列表
      * @return 可用促销信息列表（含商品基础库存）
@@ -221,11 +244,12 @@ public interface ProductMapper {
             "    <foreach collection='productIds' item='item' open='(' separator=',' close=')'>" +
             "      #{item}" +
             "    </foreach> " +
-            "  AND pp.start_time <= NOW() " + // 促销已开始
-            "  AND (pp.end_time IS NULL OR pp.end_time >= NOW()) " + // 促销未结束
+            "  AND pp.start_time &lt;= NOW() " + // 修复：<= 转义为 &lt;=
+            "  AND (pp.end_time IS NULL OR pp.end_time &gt;= NOW()) " + // 修复：>= 转义为 &gt;=
             "  AND pp.promotion_stock > 0 " + // 活动库存充足
             "  AND p.stock > 0 " + // 商品基础库存充足（新增）
-            "</script>") // 移除原 NOT IN 子查询，改在Java代码中判断限购
+            "</script>")
+    // 移除原 NOT IN 子查询，改在Java代码中判断限购
     List<ProductPromotion> getAvailablePromotionsBatch(
             @Param("userId") Integer userId,
             @Param("productIds") List<Long> productIds);
@@ -236,8 +260,15 @@ public interface ProductMapper {
      * @param productIds 商品ID列表（过滤范围）
      * @return Map<Long, Integer>  key：promotion_id（促销ID），value：已使用次数
      */
+    /**
+     * 按用户和商品ID，统计各优惠的使用次数（分组查询）
+     *
+     * @param userId     用户ID
+     * @param productIds 商品ID列表
+     * @return 分组结果列表（每个元素对应一个优惠的统计数据）
+     */
     @Select("<script>" +
-            "SELECT oi.promotion_id, COUNT(oi.promotion_id) AS used_count " +
+            "SELECT oi.promotion_id AS promotionId, COUNT(oi.promotion_id) AS usedCount " +
             "FROM order_item oi " +
             "JOIN `order` o ON oi.order_id = o.order_id " +
             "WHERE o.user_id = #{userId} " +
@@ -247,14 +278,15 @@ public interface ProductMapper {
             "    </foreach> " +
             "  AND o.order_status != 'CANCELED' " +
             "  AND oi.promotion_id IS NOT NULL " + // 过滤无促销的订单
-            "GROUP BY oi.promotion_id " + // 按促销ID分组统计次数
+            "GROUP BY oi.promotion_id " + // 按促销ID分组统计
             "</script>")
-    Map<Long, Integer> getPromotionUsedCountByUser(
+    List<PromotionUsedCountDTO> getPromotionUsedCountByUser(
             @Param("userId") Integer userId,
             @Param("productIds") List<Long> productIds);
 
     /**
      * 批量查询商品基础信息（含基础库存）
+     *
      * @param productIds 商品ID列表
      * @return 商品列表
      */
@@ -268,6 +300,9 @@ public interface ProductMapper {
             "</script>")
     List<Product> getProductBaseInfoBatch(@Param("productIds") List<Long> productIds);
 
+    /**
+     * 未登录用户查询可用促销（修复：<= 和 >= 转义）
+     */
     @Select("SELECT pp.*, p.price " +
             "FROM productpromotion pp " +
             "JOIN product p ON pp.product_id = p.product_id " +
@@ -277,6 +312,7 @@ public interface ProductMapper {
             "  AND pp.promotion_stock > 0 " +
             "  AND p.stock > 0")
     List<ProductPromotion> getAvailablePromotionsForAnonymous(@Param("productId") Long productId);
+
     @Update("UPDATE product SET stock = stock + #{quantity} WHERE product_id = #{productId}")
-    void updateProductStock(Long productId, int quantity);
+    void updateProductStock(@Param("productId") Long productId, @Param("quantity") int quantity);
 }

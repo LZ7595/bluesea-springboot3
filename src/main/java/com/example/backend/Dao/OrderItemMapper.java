@@ -10,8 +10,8 @@ import java.util.List;
 
 @Mapper
 public interface OrderItemMapper {
-    @Insert("INSERT INTO order_item (order_id, product_id, promotion_id, quantity, unit_price, discount_amount, total_price) " +
-            "VALUES (#{order_id}, #{product_id}, #{promotion_id}, #{quantity}, #{unit_price}, #{discount_amount}, #{total_price})")
+    @Insert("INSERT INTO order_item (order_id, product_id, promotion_id, quantity, original_price, unit_price, discount_amount, total_price) " +
+            "VALUES (#{order_id}, #{product_id}, #{promotion_id}, #{quantity}, #{original_price}, #{unit_price}, #{discount_amount}, #{total_price})")
     @Options(useGeneratedKeys = true, keyProperty = "item_id")
     void insertOrderItem(OrderItem orderItem);
 

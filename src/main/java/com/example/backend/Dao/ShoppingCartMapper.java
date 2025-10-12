@@ -13,7 +13,7 @@ public interface ShoppingCartMapper {
     void addToCart(ShoppingCart shoppingCart);
 
     // 根据用户 ID 获取购物车列表
-    @Select("SELECT s.* , p.product_name , p.price , p.stock " +
+    @Select("SELECT s.* , p.product_name , p.price , p.stock, p.quality " +
             "FROM shoppingcarts s " +
             "JOIN product p ON s.product_id = p.product_id " +
             "WHERE user_id = #{userId}")
@@ -34,4 +34,20 @@ public interface ShoppingCartMapper {
     // 根据用户 ID 和商品 ID 获取购物车中的商品;
     @Select("SELECT * FROM shoppingcarts WHERE user_id = #{userId} AND product_id = #{productId}")
     Integer getCartByUserIdAndProductId(@Param("userId") Long userId, @Param("productId") Long productId);
+
+    /**
+     * 批量删除购物车项（带用户ID校验，防止越权）
+     * @param cartIds 购物车ID列表
+     * @param userId 用户ID
+     * @return 删除成功的数量
+     */
+    @Delete("<script>" +
+            "DELETE FROM shoppingcarts " +
+            "WHERE cart_id IN " +
+            "<foreach collection='cartIds' item='cartId' open='(' separator=',' close=')'>" +
+            "#{cartId}" +
+            "</foreach>" +
+            "AND user_id = #{userId}" +
+            "</script>")
+    int batchDeleteCartItems(@Param("cartIds") List<Long> cartIds, @Param("userId") Long userId);
 }

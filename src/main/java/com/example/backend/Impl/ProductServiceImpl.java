@@ -2,11 +2,15 @@ package com.example.backend.Impl;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
+import com.example.backend.Controller.ProductController;
 import com.example.backend.Dao.*;
 import com.example.backend.Entity.*;
 import com.example.backend.Service.ProductService;
 import com.example.backend.Utils.PromotionDiscountCalculator;
+import com.example.backend.Utils.PromotionUtil;
 import jakarta.annotation.Resource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
@@ -23,6 +27,8 @@ import static com.example.backend.Utils.RedisConstants.*;
 @Service
 public class ProductServiceImpl implements ProductService {
 
+    private static final Logger log = LoggerFactory.getLogger(ProductController.class);
+
     @Resource
     private StringRedisTemplate stringRedisTemplate;
     @Autowired
@@ -38,90 +44,116 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ResponseEntity<ProductDetails> getProductDetails(Long productId, Integer userId) {
+        log.info("getProductDetails: productId={}, userId={}", productId, userId);
         String redisKey = PRODUCT_DETAILS_KEY + productId;
-        // 区分登录/未登录用户的缓存键（修复匿名用户缓存键问题）
+        // 区分登录/未登录用户的缓存键
         String cacheKey = userId != null
                 ? PRODUCT_PROMOTIONS_KEY + productId + ":user:" + userId
                 : PRODUCT_PROMOTIONS_KEY + productId + ":anonymous";
 
         // 1. 尝试从Redis获取缓存
         String cachedDetails = stringRedisTemplate.opsForValue().get(redisKey);
+        String cachedPromotions = stringRedisTemplate.opsForValue().get(cacheKey);
+
+        // 1.1 商品基础信息和促销信息都命中缓存
+        if (StrUtil.isNotBlank(cachedDetails) && StrUtil.isNotBlank(cachedPromotions)) {
+            ProductDetails productDetails = JSONUtil.toBean(cachedDetails, ProductDetails.class);
+            ProductPromotionWrapper promotionWrapper = JSONUtil.toBean(cachedPromotions, ProductPromotionWrapper.class);
+            productDetails.setPromotionWrapper(promotionWrapper);
+            return ResponseEntity.ok(productDetails);
+        }
+
+        // 2. 处理商品基础信息
+        ProductDetails productDetails;
         if (StrUtil.isNotBlank(cachedDetails)) {
-            String cachedPromotions = stringRedisTemplate.opsForValue().get(cacheKey);
-            if (StrUtil.isNotBlank(cachedPromotions)) {
-                // 缓存命中：反序列化商品详情和促销包装类
-                ProductDetails productDetails = JSONUtil.toBean(cachedDetails, ProductDetails.class);
-                ProductPromotionWrapper promotionWrapper = JSONUtil.toBean(cachedPromotions, ProductPromotionWrapper.class);
-                productDetails.setPromotionWrapper(promotionWrapper); // 设置促销包装类
-                return ResponseEntity.ok(productDetails);
-            }
-        }
-
-        // 2. 缓存未命中：从数据库查询基础信息
-        Product product = productMapper.getProductById(productId);
-        if (product == null) {
-            stringRedisTemplate.opsForValue().set(redisKey, "{}", 5, TimeUnit.MINUTES);
-            throw new RuntimeException("Product not found with id: " + productId);
-        }
-
-        Category category = categoryMapper.getCategoryById(product.getCategory_id());
-        Brand brand = brandMapper.getBrandById(product.getBrand_id());
-        if (category == null || brand == null) {
-            throw new RuntimeException("Category or Brand not found for product with id: " + productId);
-        }
-
-        List<ProductImage> productImages = productImageMapper.getProductImagesByProductId(productId);
-        List<String> imageUrls = productImages.stream()
-                .map(ProductImage::getImage_url)
-                .collect(Collectors.toList());
-
-        // 3. 处理促销信息（核心修改：区分可用/不可用）
-        ProductPromotionWrapper promotionWrapper = new ProductPromotionWrapper();
-
-        if (userId == null) {
-            // 3.1 未登录用户：只展示基础可用促销（不考虑限购次数）
-            List<ProductPromotion> allPromotions = productMapper.getAvailablePromotionsForAnonymous(productId);
-            promotionWrapper.setUsablePromotions(filterAnonymousUsablePromotions(allPromotions, product.getStock()));
-            promotionWrapper.setUnusablePromotions(Collections.emptyList());
+            // 2.1 商品基础信息命中缓存，直接反序列化
+            productDetails = JSONUtil.toBean(cachedDetails, ProductDetails.class);
         } else {
-            // 3.2 已登录用户：查询并区分可用/不可用促销
-            List<Long> usedPromotionIds = productMapper.getUserUsedPromotions(userId, productId);
-            Map<Long, Integer> usedCountMap = productMapper.getPromotionUsedCountByUser(
-                    userId,
-                    Collections.singletonList(productId) // 单个商品ID转为列表
-            );
-            List<ProductPromotion> allPromotions = productMapper.getAvailablePromotions(userId, productId);
+            // 2.2 商品基础信息未命中缓存，从数据库查询
+            Product product = productMapper.getProductById(productId);
+            if (product == null) {
+                stringRedisTemplate.opsForValue().set(redisKey, "{}", 5, TimeUnit.MINUTES);
+                throw new RuntimeException("Product not found with id: " + productId);
+            }
 
-            splitUsableAndUnusablePromotions(
-                    allPromotions, usedPromotionIds, usedCountMap,
-                    product.getStock(), promotionWrapper
+            Category category = categoryMapper.getCategoryById(product.getCategory_id());
+            Brand brand = brandMapper.getBrandById(product.getBrand_id());
+            if (category == null || brand == null) {
+                throw new RuntimeException("Category or Brand not found for product with id: " + productId);
+            }
+
+            List<ProductImage> productImages = productImageMapper.getProductImagesByProductId(productId);
+            List<String> imageUrls = productImages.stream()
+                    .map(ProductImage::getImage_url)
+                    .collect(Collectors.toList());
+
+            // 构建基础商品详情（暂不包含促销信息）
+            productDetails = new ProductDetails(
+                    product.getProduct_id(),
+                    product.getProduct_name(),
+                    category.getCategory_name(),
+                    brand.getBrand_name(),
+                    product.getProduct_description(),
+                    product.getPrice(),
+                    product.getPrice(), // 临时设置，后续会更新
+                    product.getQuality(),
+                    product.getStock(),
+                    imageUrls,
+                    null // 促销信息后续单独处理
             );
+
+            // 存入商品基础信息缓存
+            stringRedisTemplate.opsForValue().set(redisKey, JSONUtil.toJsonStr(productDetails), 30, TimeUnit.MINUTES);
         }
 
-        // 4. 计算最佳价格（从可用促销中取最低折扣价）
+        // 3. 处理促销信息（单独判断缓存是否命中）
+        ProductPromotionWrapper promotionWrapper;
+        if (StrUtil.isNotBlank(cachedPromotions)) {
+            // 3.1 促销信息命中缓存，直接反序列化
+            promotionWrapper = JSONUtil.toBean(cachedPromotions, ProductPromotionWrapper.class);
+        } else {
+            // 3.2 促销信息未命中缓存，从数据库查询
+            promotionWrapper = new ProductPromotionWrapper();
+            Product product = productMapper.getProductById(productId); // 确保获取最新商品信息（库存等）
+
+            if (userId == null) {
+                // 未登录用户
+                List<ProductPromotion> allPromotions = productMapper.getAvailablePromotionsForAnonymous(productId);
+                promotionWrapper.setUsablePromotions(filterAnonymousUsablePromotions(allPromotions, product.getStock()));
+                promotionWrapper.setUnusablePromotions(Collections.emptyList());
+            } else {
+                // 已登录用户
+                List<PromotionUsedCountDTO> usedCountList = productMapper.getPromotionUsedCountByUser(
+                        userId,
+                        Collections.singletonList(productId)
+                );
+                Map<Long, Integer> usedCountMap = new HashMap<>();
+                if (usedCountList != null && !usedCountList.isEmpty()) {
+                    for (PromotionUsedCountDTO dto : usedCountList) {
+                        if (dto.getPromotionId() != null) {
+                            usedCountMap.put(dto.getPromotionId(), dto.getUsedCount());
+                        }
+                    }
+                }
+
+                List<ProductPromotion> allPromotions = productMapper.getAvailablePromotions(userId, productId);
+                PromotionUtil.splitUsableAndUnusablePromotions(
+                        allPromotions, usedCountMap,
+                        product.getStock(), promotionWrapper
+                );
+            }
+
+            // 存入促销信息缓存
+            stringRedisTemplate.opsForValue().set(cacheKey, JSONUtil.toJsonStr(promotionWrapper), 10, TimeUnit.MINUTES);
+        }
+
+        // 4. 计算最佳价格并完善商品详情
         BigDecimal bestPrice = promotionWrapper.getUsablePromotions().stream()
                 .map(ProductPromotion::getDiscount_price)
                 .min(BigDecimal::compareTo)
-                .orElse(product.getPrice()); // 无可用促销则用原价
-
-        // 5. 构建商品详情对象（使用新实体类的构造参数）
-        ProductDetails productDetails = new ProductDetails(
-                product.getProduct_id(),
-                product.getProduct_name(),
-                category.getCategory_name(),
-                brand.getBrand_name(),
-                product.getProduct_description(),
-                product.getPrice(), // 原价
-                bestPrice, // 最佳优惠价（新增）
-                product.getQuality(),
-                product.getStock(),
-                imageUrls,
-                promotionWrapper // 促销包装类（替换原availablePromotions）
-        );
-
-        // 6. 存入Redis缓存（缓存促销包装类而非原始列表）
-        stringRedisTemplate.opsForValue().set(redisKey, JSONUtil.toJsonStr(productDetails), 30, TimeUnit.MINUTES);
-        stringRedisTemplate.opsForValue().set(cacheKey, JSONUtil.toJsonStr(promotionWrapper), 10, TimeUnit.MINUTES);
+                .orElse(productDetails.getPrice()); // 使用基础信息中的原价
+        productDetails.setBestPrice(bestPrice);
+        productDetails.setPromotionWrapper(promotionWrapper);
 
         return ResponseEntity.ok(productDetails);
     }
@@ -137,54 +169,6 @@ public class ProductServiceImpl implements ProductService {
                     p.setDiscount_price(discountPrice);
                 })
                 .collect(Collectors.toList());
-    }
-
-    /**
-     * 区分已登录用户的可用/不可用促销（核心逻辑）
-     */
-    private void splitUsableAndUnusablePromotions(
-            List<ProductPromotion> allPromotions,
-            List<Long> usedPromotionIds,
-            Map<Long, Integer> usedCountMap,
-            int productStock,
-            ProductPromotionWrapper wrapper) {
-
-        List<ProductPromotion> usable = new ArrayList<>();
-        List<UnusablePromotion> unusable = new ArrayList<>();
-
-        for (ProductPromotion promotion : allPromotions) {
-            Long promotionId = promotion.getPromotion_id();
-            int perUserLimit = promotion.getPer_user_limit();
-            int usedCount = usedCountMap.getOrDefault(promotionId, 0);
-            int availableCount = perUserLimit - usedCount;
-            int promotionStock = promotion.getPromotion_quantity();
-
-            // 计算折扣价
-            BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(promotion);
-            promotion.setDiscount_price(discountPrice);
-
-            // 判断可用状态
-            if (availableCount > 0 && promotionStock > 0 && productStock > 0) {
-                usable.add(promotion);
-            } else {
-                // 生成不可用原因
-                String reason = getUnusableReason(availableCount, promotionStock, productStock);
-                unusable.add(new UnusablePromotion(promotion, reason, usedCount, availableCount));
-            }
-        }
-
-        wrapper.setUsablePromotions(usable);
-        wrapper.setUnusablePromotions(unusable);
-    }
-
-    /**
-     * 生成促销不可用的具体原因
-     */
-    private String getUnusableReason(int availableCount, int promotionStock, int productStock) {
-        if (availableCount <= 0) return "已达每人限购次数";
-        if (promotionStock <= 0) return "活动库存不足";
-        if (productStock <= 0) return "商品库存不足";
-        return "促销暂不可用";
     }
 
 
@@ -423,6 +407,7 @@ public class ProductServiceImpl implements ProductService {
                 return ResponseEntity.ok().body(PageResult);
             }
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(500).body(null);
         }
         return ResponseEntity.status(404).body(null);

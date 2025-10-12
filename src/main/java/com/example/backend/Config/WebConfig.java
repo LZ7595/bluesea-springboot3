@@ -2,6 +2,9 @@ package com.example.backend.Config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
@@ -27,7 +30,7 @@ public class WebConfig implements WebMvcConfigurer {
         // 允许本地开发环境（H5）
         config.addAllowedOriginPattern("http://localhost:5173");
         // 允许生产环境域名（示例）
-        config.addAllowedOriginPattern("http://192.168.1.100");
+        config.addAllowedOriginPattern("http://192.168.1.102");
         // 允许另一个域名（示例）
         config.addAllowedOriginPattern("http://localhost:5555");
         // 允许所有子域名（如 *.example.com）
@@ -51,6 +54,19 @@ public class WebConfig implements WebMvcConfigurer {
         source.registerCorsConfiguration("/**", config);
 
         return new CorsFilter(source);
+    }
+    // HTTP请求客户端配置
+    @Bean
+    public RestTemplate restTemplate(ClientHttpRequestFactory factory) {
+        return new RestTemplate(factory);
+    }
+
+    @Bean
+    public ClientHttpRequestFactory requestFactory() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);  // 连接超时5秒
+        factory.setReadTimeout(10000);   // 读取超时10秒
+        return factory;
     }
 
     @Override

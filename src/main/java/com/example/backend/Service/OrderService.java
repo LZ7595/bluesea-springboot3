@@ -9,12 +9,9 @@ import java.util.List;
 import java.util.Map;
 
 public interface OrderService {
-    Long createOrder(Order order, OrderItem[] orderItems);
+    Long createOrder(Map<String, Object> params);
 
     ResponseEntity<?> verifyGoodsForUser(Integer userId, List<Map<String, Object>> goodsList);
-
-    //    String payOrder(Long orderId, BigDecimal paymentAmount) throws Exception;
-    String payOrder(Long orderId) throws Exception;
 
     String handlePayNotify(String params);
 
@@ -25,4 +22,12 @@ public interface OrderService {
     ResponseEntity<?> getOrdersByUserIdAndStatus(Integer userId, String status, int currentPage, int pageSize);
 
     ResponseEntity<?> confirmOrder(Long orderId);
+
+    Order getOrderById(Long orderId);
+
+    String createAppPayOrder(Order order, boolean isSandbox) throws Exception;
+
+    String createWebPayOrder(Order order, boolean isSandbox, String clientType) throws Exception;
+
+    Map<String, Object> queryPayStatus(String orderNo, boolean isSandbox) throws Exception;
 }

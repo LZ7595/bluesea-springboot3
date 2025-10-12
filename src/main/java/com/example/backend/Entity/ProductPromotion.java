@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.Date;
 
 @Data
 @AllArgsConstructor
@@ -20,6 +21,9 @@ public class ProductPromotion {
     private BigDecimal price;
     private String quality;
     private BigDecimal discount_price;
+    private Integer promotion_stock;
     private Integer promotion_quantity;
     private Integer per_user_limit;
+    private Date start_time;
+    private Date end_time;
 }

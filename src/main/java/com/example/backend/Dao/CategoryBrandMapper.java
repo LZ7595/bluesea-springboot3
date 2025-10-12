@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 public interface CategoryBrandMapper {
     @Select({
             "<script>",
-            "SELECT b.brand_id, b.brand_name, r.category_id   ",
+            "SELECT b.brand_id, b.brand_name, r.category_id , b.logo  ",
             "FROM brand_category_relation r ",
             "JOIN brand b ON r.brand_id = b.brand_id ",
             "WHERE r.category_id IN ",
@@ -44,6 +44,7 @@ public interface CategoryBrandMapper {
             "</script>"
     })
     List<BrandVO> selectBrandsByCategoryId(@Param("categoryIds") List<Long> categoryIds, @Param("excludeName") String excludeName);
+
     default Map<Integer, List<BrandVO>> selectBrandMapByCategoryIds(List<Integer> categoryIds) {
         List<BrandVO> allBrands = selectBrandsByCategoryIds(categoryIds);
         System.out.println(allBrands);

@@ -3,20 +3,17 @@ package com.example.backend.Impl;
 import com.example.backend.Dao.ProductImageMapper;
 import com.example.backend.Dao.ProductMapper;
 import com.example.backend.Dao.ShoppingCartMapper;
+import com.example.backend.Entity.*;
 import com.example.backend.Entity.Enum.ErrorType;
-import com.example.backend.Entity.ProductImage;
-import com.example.backend.Entity.ProductPromotion;
-import com.example.backend.Entity.Selected;
-import com.example.backend.Entity.ShoppingCart;
 import com.example.backend.Service.ShoppingCartService;
 import com.example.backend.Utils.PromotionDiscountCalculator;
+import com.example.backend.Utils.PromotionUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,11 +27,12 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
 
     @Autowired
     private ProductMapper productMapper;
+
     @Override
     public ResponseEntity<?> addToCart(ShoppingCart shoppingCart) {
         Optional<Integer> result = Optional.ofNullable(shoppingCartMapper.getCartByUserIdAndProductId(shoppingCart.getUser_id(), shoppingCart.getProduct_id()));
         if (result.isPresent() && result.get() > 0) {
-                return ResponseEntity.status(409).body(ErrorType.ITEM_ALREADY_IN_CART.toErrorResponse());
+            return ResponseEntity.status(409).body(ErrorType.ITEM_ALREADY_IN_CART.toErrorResponse());
         } else if (!result.isPresent()) {
             shoppingCartMapper.addToCart(shoppingCart);
             return ResponseEntity.ok().body("添加成功");
@@ -53,39 +51,31 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
                         Long productId = cartProduct.getProduct_id();
                         ProductImage mainImage = productImageMapper.getProductMainImageByProductId(productId);
                         cartProduct.setProduct_main_image(mainImage.getImage_url());
-
-                        // 查询用户之前使用过的促销 ID
-                        List<Long> usedPromotions = productMapper.getUserUsedPromotions(userId, productId);
-                        System.out.println("sss" + usedPromotions);
-                        // 查询当前可用的促销信息
-                        List<ProductPromotion> availablePromotions = productMapper.getAvailablePromotions(userId, productId);
-                        // 移除用户已经使用过的促销信息
-                        availablePromotions.removeIf(promotion -> usedPromotions.contains(promotion.getPromotion_id()));
-
-                        System.out.println("可用促销: " + availablePromotions);
-                        ProductPromotion cheapestPromotion = null;
-                        BigDecimal lowestDiscountPrice = null;
-                        for (ProductPromotion promotion : availablePromotions) {
-                            if (promotion != null) {
-                                System.out.println("Flash sale found for product ID " + promotion);
-                                BigDecimal discountPrice = PromotionDiscountCalculator.calculateDiscountPrice(promotion);
-                                // 将计算得到的折扣价格设置到 ProductPromotion 对象中
-                                promotion.setDiscount_price(discountPrice);
-
-                                if (lowestDiscountPrice == null || discountPrice.compareTo(lowestDiscountPrice) < 0) {
-                                    lowestDiscountPrice = discountPrice;
-                                    cheapestPromotion = promotion;
+                        ProductPromotionWrapper promotionWrapper = new ProductPromotionWrapper();
+                        List<PromotionUsedCountDTO> usedCountList = productMapper.getPromotionUsedCountByUser(
+                                userId,
+                                Collections.singletonList(productId)
+                        );
+                        // 转换为Map<Long, Integer>（优惠ID -> 使用次数）
+                        Map<Long, Integer> usedCountMap = new HashMap<>();
+                        if (usedCountList != null && !usedCountList.isEmpty()) {
+                            for (PromotionUsedCountDTO dto : usedCountList) {
+                                if (dto.getPromotionId() != null) { // 避免空键
+                                    usedCountMap.put(dto.getPromotionId(), dto.getUsedCount());
                                 }
                             }
-                            System.out.println(promotion);
                         }
-                        if (cheapestPromotion != null) {
-                            System.out.println("最便宜的促销活动: " + cheapestPromotion);
-                            System.out.println("最低折扣价格: " + lowestDiscountPrice);
-                        } else {
-                            System.out.println("未找到有效的促销活动。");
-                        }
-                        cartProduct.setDiscount_price(lowestDiscountPrice);
+                        List<ProductPromotion> allPromotions = productMapper.getAvailablePromotions(userId, productId);
+                        cartProduct.setPromotionWrapper(promotionWrapper);
+                        PromotionUtil.splitUsableAndUnusablePromotions(
+                                allPromotions, usedCountMap,
+                                cartProduct.getStock(), promotionWrapper
+                        );
+                        BigDecimal bestPrice = promotionWrapper.getUsablePromotions().stream()
+                                .map(ProductPromotion::getDiscount_price)
+                                .min(BigDecimal::compareTo)
+                                .orElse(cartProduct.getPrice());
+                        cartProduct.setBestPrice(bestPrice);
                         return cartProduct;
                     }
             ).collect(Collectors.toList());
@@ -114,7 +104,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     }
 
     @Override
-    public void updateSelectedListStatus(List<Selected> SelectedList){
+    public void updateSelectedListStatus(List<Selected> SelectedList) {
         for (Selected selected : SelectedList) {
             shoppingCartMapper.updateSelectedStatus(selected.getCartId(), selected.getIsSelected());
         }

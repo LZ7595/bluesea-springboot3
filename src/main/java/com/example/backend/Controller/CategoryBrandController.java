@@ -19,7 +19,12 @@ public class CategoryBrandController {
     }
 
     @GetMapping("/brandList")
-    public CategoryBrandVO getCategoryBrandListByCategoryName(@RequestParam String categoryName) {
-        return categoryBrandService.getBrandListByCategoryName(categoryName);
+    public CategoryBrandVO getCategoryBrandListByCategoryName(@RequestParam String categoryName, @RequestParam(defaultValue = "7") Integer limit, @RequestParam Integer type) {
+        return categoryBrandService.getBrandListByCategoryName(categoryName, limit, type);
+    }
+
+    @GetMapping("/categoryList")
+    public List<CategoryBrandVO> getCategoryList() {
+        return categoryBrandService.getCategoryList();
     }
 }

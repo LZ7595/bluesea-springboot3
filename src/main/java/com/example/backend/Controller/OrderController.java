@@ -3,6 +3,7 @@ package com.example.backend.Controller;
 import com.example.backend.Entity.Order;
 import com.example.backend.Entity.OrderItem;
 import com.example.backend.Service.OrderService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +16,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/order")
+@Slf4j
 public class OrderController {
     @Autowired
     private OrderService orderService;
@@ -24,71 +26,96 @@ public class OrderController {
         // TODO: 实现验证商品库存的逻辑
         return orderService.verifyGoodsForUser(user_id, goodsList);
     }
+
+    /**
+     * 创建订单接口（适配前端确认订单页参数）
+     * 前端参数格式：
+     * {
+     * "user_id": 1110000000,          // 用户ID
+     * "address_id": 10,               // 收货地址ID
+     * "payment_type": 1,              // 支付方式（1-微信，2-支付宝）
+     * "remark": "请尽快发货",          // 订单备注
+     * "orderItems": [                 // 订单项列表
+     * {
+     * "cart_id": 123,             // 购物车ID（可选，用于后续清空购物车）
+     * "product_id": 400000026,    // 商品ID
+     * "quantity": 1,              // 购买数量
+     * "promotion_id": 5,          // 选中的优惠ID（无优惠则为null）
+     * "promotion_used_qty": 1,    // 优惠商品数量
+     * "original_used_qty": 0,     // 原价商品数量（超出优惠限购的部分）
+     * "unit_price": 849.00,       // 优惠后单价
+     * "original_price": 999.00    // 商品原价
+     * }
+     * ]
+     * }
+     */
     @PostMapping("/create")
     public Long createOrder(@RequestBody Map<String, Object> params) {
-        System.out.println("Received request to create order with params: " + params);
-        // 解析参数，创建 Order 和 OrderItem 对象
-        // 解析用户 ID
-        Integer userId = (Integer) params.get("userId");
-        Integer addressId = (Integer) params.get("addressId");
+        // 1. 日志打印请求参数（便于问题排查）
+        log.info("Received create order request, params: {}", params);
 
-        // 生成订单号
-        String orderNo = UUID.randomUUID().toString().replace("-", "");
+        try {
 
-        // 创建 Order 对象
-        Order order = new Order();
-        order.setUser_id(userId);
-        order.setOrder_no(orderNo);
-        order.setCreate_time(new Date());
-        order.setUpdate_time(new Date());
-        order.setOrder_status("UNPAID"); // 初始订单状态设为待处理
-        order.setAddress_id(addressId);
+            Long orderId = orderService.createOrder(params);
 
-        // 解析订单项列表
-        List<Map<String, Object>> orderItemMaps = (List<Map<String, Object>>) params.get("orderItems");
-        OrderItem[] orderItems = new OrderItem[orderItemMaps.size()];
-        BigDecimal totalAmount = BigDecimal.ZERO;
-        BigDecimal discountAmount = BigDecimal.ZERO;
+            // 8. 返回订单ID（前端用于后续支付）
+            log.info("Create order success, orderId: {}", orderId);
+            return orderId;
 
-        for (int i = 0; i < orderItemMaps.size(); i++) {
-            Map<String, Object> itemMap = orderItemMaps.get(i);
-            OrderItem orderItem = new OrderItem();
-            Integer productIdInt = (Integer) itemMap.get("productId");
-            orderItem.setProduct_id(productIdInt != null ? Long.valueOf(productIdInt) : null);
-            orderItem.setPromotion_id((Integer) itemMap.getOrDefault("promotionId", null));
-            orderItem.setQuantity((Integer) itemMap.get("quantity"));
-            orderItem.setUnit_price(new BigDecimal(itemMap.get("unitPrice").toString()));
-            orderItem.setDiscount_amount(new BigDecimal(itemMap.getOrDefault("discountAmount", "0").toString()));
-            orderItem.setTotal_price(orderItem.getUnit_price().multiply(BigDecimal.valueOf(orderItem.getQuantity())));
-
-            // 考虑购买数量，累加每个订单项的总价到总金额
-            totalAmount = totalAmount.add(orderItem.getTotal_price());
-            discountAmount = discountAmount.add(orderItem.getDiscount_amount());
-
-            orderItems[i] = orderItem;
+        } catch (Exception e) {
+            // 异常处理：打印日志并抛出友好异常
+            log.error("Create order failed", e);
+            throw new RuntimeException("创建订单失败：" + e.getMessage());
         }
-
-        order.setTotal_amount(totalAmount);
-        order.setDiscount_amount(discountAmount);
-        order.setPayment_amount(totalAmount.subtract(discountAmount));
-        System.out.println("Order: " + order);
-
-        return orderService.createOrder(order, orderItems);
     }
-
-//    @GetMapping("/pay/{orderId}")
-//    public String payOrder(@PathVariable Long orderId, @RequestParam BigDecimal paymentAmount) throws Exception {
-//        return orderService.payOrder(orderId, paymentAmount);
-//    }
 
     @GetMapping("/details/{orderId}")
     public ResponseEntity<?> getOrderDetails(@PathVariable Long orderId) {
         return orderService.getOrderDetails(orderId);
     }
 
+    /**
+     * 统一支付接口（支持多端和沙箱环境）
+     *
+     * @param orderId    订单ID
+     * @param isSandbox  是否沙箱环境
+     * @param clientType 客户端类型（app/h5/miniprogram）
+     */
     @GetMapping("/pay/{orderId}")
-    public String payOrder(@PathVariable Long orderId) throws Exception {
-        return orderService.payOrder(orderId);
+    public ResponseEntity<?> payOrder(
+            @PathVariable Long orderId,
+            @RequestParam(required = false, defaultValue = "false") boolean isSandbox,
+            @RequestHeader("Client-Type") String clientType) throws Exception {// 1. 获取订单信息
+        Order order = orderService.getOrderById(orderId);
+        if (order == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // 2. 根据客户端类型处理支付
+        if ("app".equals(clientType)) {
+            // App端：返回签名后的订单字符串
+            String orderString = orderService.createAppPayOrder(order, isSandbox);
+            return ResponseEntity.ok(Map.of("orderString", orderString));
+        } else {
+            // H5/小程序：返回支付表单HTML
+            String formHtml = orderService.createWebPayOrder(order, isSandbox, clientType);
+            return ResponseEntity.ok(Map.of("form", formHtml));
+        }
+    }
+
+    /**
+     * 支付结果查询接口（供前端轮询使用）
+     */
+    @GetMapping("/pay/query/{orderNo}")
+    public ResponseEntity<?> queryPayResult(
+            @PathVariable String orderNo,
+            @RequestParam(required = false, defaultValue = "false") boolean isSandbox) {
+        try {
+            Map<String, Object> result = orderService.queryPayStatus(orderNo, isSandbox);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @PostMapping("/pay/notify")
