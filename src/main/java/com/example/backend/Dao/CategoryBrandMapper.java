@@ -1,6 +1,6 @@
 package com.example.backend.Dao;
 
-import com.example.backend.Entity.BrandVO;
+import com.example.backend.Model.Vo.BrandVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;

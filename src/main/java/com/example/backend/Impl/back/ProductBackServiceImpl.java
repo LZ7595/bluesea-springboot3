@@ -1,13 +1,16 @@
 package com.example.backend.Impl.back;
 
+import com.example.backend.Config.RabbitConfig;
 import com.example.backend.Dao.*;
 import com.example.backend.Dao.back.ProductBackMapper;
 import com.example.backend.Dao.back.PromotionBackMapper;
-import com.example.backend.Entity.*;
-import com.example.backend.Entity.back.ProductDetailsBack;
-import com.example.backend.Entity.back.PromotionBack;
+import com.example.backend.Model.Dto.PageResult;
+import com.example.backend.Model.Entity.*;
+import com.example.backend.Model.Entity.back.ProductDetailsBack;
+import com.example.backend.Model.Entity.back.PromotionBack;
 import com.example.backend.Service.back.ProductBackService;
 import com.example.backend.Utils.PromotionDiscountCalculator;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.http.ResponseEntity;
@@ -32,7 +35,8 @@ public class ProductBackServiceImpl implements ProductBackService {
     private BrandMapper brandMapper;
     @Autowired
     private PromotionBackMapper promotionBackMapper;
-
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
     @Override
     public ResponseEntity<?> getSelectList(){
         List<Product> productList = productBackMapper.getProductNameAndId();
@@ -148,6 +152,13 @@ public class ProductBackServiceImpl implements ProductBackService {
             int rowsAffected = productBackMapper.updateProduct(product);
             System.out.println("更新产品信息，受影响的行数: " + rowsAffected);
 
+            // 发送商品缓存更新消息（清除该商品的缓存）
+            rabbitTemplate.convertAndSend(
+                    RabbitConfig.PRODUCT_CACHE_EXCHANGE,
+                    RabbitConfig.PRODUCT_CACHE_UPDATE_ROUTING_KEY,
+                    productId  // 消息内容：商品ID
+            );
+
             return 1;
         } catch (Exception e) {
             e.printStackTrace();
@@ -175,6 +186,12 @@ public class ProductBackServiceImpl implements ProductBackService {
                     promotion.setProduct_id(productId);
                     promotionBackMapper.insertPromotion(promotion);
                 }
+                // 发送商品缓存更新消息（新商品无需清除缓存，但可触发初始化）
+                rabbitTemplate.convertAndSend(
+                        RabbitConfig.PRODUCT_CACHE_EXCHANGE,
+                        RabbitConfig.PRODUCT_CACHE_UPDATE_ROUTING_KEY,
+                        productId
+                );
             }
             return result;
         } catch (Exception e) {
@@ -240,10 +257,12 @@ public class ProductBackServiceImpl implements ProductBackService {
             if (newPromotion.getPromotion_id() == null) {
                 System.out.println("新增促销信息: " + newPromotion);
                 promotionBackMapper.insertPromotion(newPromotion);
+                sendPromotionEndDelayMessage(newPromotion);
             } else {
                 PromotionBack existingPromotion = findExistingPromotion(existingPromotions, newPromotion.getPromotion_id());
                 if (existingPromotion != null && shouldUpdatePromotion(newPromotion, existingPromotion)) {
                     promotionBackMapper.updatePromotion(newPromotion);
+                    sendPromotionEndDelayMessage(newPromotion);
                 }
             }
         }
@@ -290,5 +309,29 @@ public class ProductBackServiceImpl implements ProductBackService {
         } else {
             System.out.println("其他异常: " + e.getMessage());
         }
+    }
+    // 发送促销结束延迟消息（活动结束时触发缓存更新）
+    private void sendPromotionEndDelayMessage(PromotionBack promotion) {
+        Date endTime = promotion.getEnd_time();
+        if (endTime == null) {
+            return;  // 无结束时间的促销不发送延迟消息
+        }
+        long currentTime = System.currentTimeMillis();
+        long delayTime = endTime.getTime() - currentTime;  // 延迟时间（毫秒，long类型）
+        if (delayTime <= 0) {
+            return;  // 已结束的促销不发送
+        }
+
+        // 消息内容：促销ID（后续通过促销ID查询关联商品）
+        rabbitTemplate.convertAndSend(
+                RabbitConfig.PROMOTION_DELAY_EXCHANGE,
+                RabbitConfig.PROMOTION_DELAY_ROUTING_KEY,
+                promotion.getPromotion_id(),
+                message -> {
+                    message.getMessageProperties().getHeaders().put("x-delay", delayTime);
+                    return message;
+                }
+        );
+        System.out.println("发送促销结束延迟消息：促销ID=" + promotion.getPromotion_id() + "，延迟时间=" + delayTime + "ms");
     }
 }

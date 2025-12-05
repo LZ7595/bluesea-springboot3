@@ -1,7 +1,7 @@
 package com.example.backend.Impl.back;
 
 import com.example.backend.Dao.back.CategoryBrandBackMapper;
-import com.example.backend.Entity.CategoryBrand;
+import com.example.backend.Model.Entity.CategoryBrand;
 import com.example.backend.Service.back.CategoryBrandBackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

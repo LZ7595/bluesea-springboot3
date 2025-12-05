@@ -1,7 +1,8 @@
 package com.example.backend.Controller;
 
-import com.example.backend.Entity.WebSocket.Message;
-import com.example.backend.Entity.WebSocket.MessageForm;
+import com.example.backend.Model.Dto.PageResult;
+import com.example.backend.Model.WebSocket.Message;
+import com.example.backend.Model.WebSocket.MessageForm;
 import com.example.backend.Service.MessageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

@@ -1,7 +1,7 @@
 package com.example.backend.Controller;
 
 import com.example.backend.Dao.BannerMapper;
-import com.example.backend.Entity.Banner;
+import com.example.backend.Model.Entity.Banner;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

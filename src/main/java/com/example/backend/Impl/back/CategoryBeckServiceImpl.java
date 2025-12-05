@@ -2,8 +2,8 @@ package com.example.backend.Impl.back;
 
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.example.backend.Dao.back.CategoryBackMapper;
-import com.example.backend.Entity.BrandList;
-import com.example.backend.Entity.Category;
+import com.example.backend.Model.Vo.LabelList;
+import com.example.backend.Model.Entity.Category;
 import com.example.backend.Service.back.CategoryBackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -66,7 +66,7 @@ public class CategoryBeckServiceImpl implements CategoryBackService {
     }
 
     @Override
-    public List<BrandList> getSelectList(String keyword, Long categoryId) {
+    public List<LabelList> getSelectList(String keyword, Long categoryId) {
         return categoryBackMapper.getCategoryList(keyword, categoryId);
     }
 }

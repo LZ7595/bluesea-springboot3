@@ -1,6 +1,6 @@
 package com.example.backend.Service.back;
 
-import com.example.backend.Entity.Banner;
+import com.example.backend.Model.Entity.Banner;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;

@@ -1,7 +1,7 @@
 package com.example.backend.Impl;
 import com.alibaba.fastjson.JSONObject;
 import com.example.backend.Config.Kuaidi100Config;
-import com.example.backend.Entity.ExpressRequest;
+import com.example.backend.Model.Request.ExpressRequest;
 import com.example.backend.Service.ExpressService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;

@@ -1,18 +1,15 @@
 package com.example.backend.Controller;
 
-import com.example.backend.Entity.Order;
-import com.example.backend.Entity.OrderItem;
+import com.example.backend.Model.Entity.Order;
+import com.example.backend.Model.Enum.PaymentType;
 import com.example.backend.Service.OrderService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/order")
@@ -33,7 +30,6 @@ public class OrderController {
      * {
      * "user_id": 1110000000,          // 用户ID
      * "address_id": 10,               // 收货地址ID
-     * "payment_type": 1,              // 支付方式（1-微信，2-支付宝）
      * "remark": "请尽快发货",          // 订单备注
      * "orderItems": [                 // 订单项列表
      * {
@@ -79,27 +75,32 @@ public class OrderController {
      *
      * @param orderId    订单ID
      * @param isSandbox  是否沙箱环境
+     * @param payment    支付方式(ALIPAY/WECHATPAY/BANK/ORDER)
      * @param clientType 客户端类型（app/h5/miniprogram）
      */
     @GetMapping("/pay/{orderId}")
     public ResponseEntity<?> payOrder(
             @PathVariable Long orderId,
             @RequestParam(required = false, defaultValue = "false") boolean isSandbox,
+            @RequestParam PaymentType payment,
             @RequestHeader("Client-Type") String clientType) throws Exception {// 1. 获取订单信息
         Order order = orderService.getOrderById(orderId);
         if (order == null) {
             return ResponseEntity.notFound().build();
         }
-
-        // 2. 根据客户端类型处理支付
-        if ("app".equals(clientType)) {
-            // App端：返回签名后的订单字符串
-            String orderString = orderService.createAppPayOrder(order, isSandbox);
-            return ResponseEntity.ok(Map.of("orderString", orderString));
-        } else {
-            // H5/小程序：返回支付表单HTML
-            String formHtml = orderService.createWebPayOrder(order, isSandbox, clientType);
-            return ResponseEntity.ok(Map.of("form", formHtml));
+        if (payment == PaymentType.ALIPAY) {
+            // 2. 根据客户端类型处理支付
+            if ("app".equals(clientType)) {
+                // App端：返回签名后的订单字符串
+                String orderString = orderService.createAppPayOrder(order, isSandbox);
+                return ResponseEntity.ok(Map.of("orderString", orderString));
+            } else {
+                // H5/小程序：返回支付表单HTML
+                String formHtml = orderService.createWebPayOrder(order, isSandbox, clientType);
+                return ResponseEntity.ok(Map.of("form", formHtml));
+            }
+        }else {
+            return ResponseEntity.badRequest().body("暂不支持的支付方式");
         }
     }
 

@@ -1,6 +1,6 @@
 package com.example.backend.Controller;
 
-import com.example.backend.Entity.CategoryBrandVO;
+import com.example.backend.Model.Vo.CategoryBrandVO;
 import com.example.backend.Service.CategoryBrandService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;

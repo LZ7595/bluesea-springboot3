@@ -1,6 +1,6 @@
 package com.example.backend.Dao.back;
 
-import com.example.backend.Entity.CategoryBrand;
+import com.example.backend.Model.Entity.CategoryBrand;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;

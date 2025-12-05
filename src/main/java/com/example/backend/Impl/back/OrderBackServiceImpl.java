@@ -3,8 +3,10 @@ package com.example.backend.Impl.back;
 import com.example.backend.Dao.*;
 import com.example.backend.Dao.back.OrderBackMapper;
 import com.example.backend.Dao.AddressMapper;
-import com.example.backend.Entity.*;
-import com.example.backend.Entity.back.OrderDetailsBack;
+import com.example.backend.Model.Dto.PageResult;
+import com.example.backend.Model.Entity.*;
+import com.example.backend.Model.Entity.back.OrderDetailsBack;
+import com.example.backend.Model.Vo.ProductPayInfo;
 import com.example.backend.Service.back.OrderBackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +26,9 @@ public class OrderBackServiceImpl implements OrderBackService {
 
     @Autowired
     private ProductMapper productMapper;
+
+    @Autowired
+    private ExpressMapper expressMapper;
 
     @Autowired
     private ProductPromotionMapper productPromotionMapper;
@@ -51,6 +56,10 @@ public class OrderBackServiceImpl implements OrderBackService {
                     }
                     Address address = adderssMapper.getAddressByOrderId(orderId);
 
+                    Express express = null;
+                    if (order.getExpress_id() != null) {
+                        express = expressMapper.getExpressById(order.getExpress_id());
+                    }
                     List<OrderItem> orderItems = orderBackMapper.getOrderItemsByOrderId(orderId);
                     List<OrderItem> orderItemDetails = orderItems.stream().map(orderItem -> {
                         orderItem.setProduct(getProductPayInfo(orderItem.getProduct_id(), orderItem.getPromotion_id()));
@@ -70,8 +79,9 @@ public class OrderBackServiceImpl implements OrderBackService {
                             order.getCreate_time(),
                             order.getUpdate_time(),
                             order.getPay_time(),
+                            order.getExpress_id(),
+                            express,
                             order.getExpress_num(),
-                            order.getExpress_com(),
                             order.getExpress_time()
                     );
                 }).collect(Collectors.toList());
@@ -111,6 +121,10 @@ public class OrderBackServiceImpl implements OrderBackService {
                     Address address = adderssMapper.getAddressByOrderId(orderId);
                     orderDetail.setAddress(address);
                 }
+                if (orderDetail.getExpress_id() != null){
+                    Express express = expressMapper.getExpressById(orderDetail.getExpress_id());
+                    orderDetail.setExpress(express);
+                }
                 return ResponseEntity.ok().body(orderDetail);
             } else {
                 return ResponseEntity.status(404).body(null);
@@ -120,9 +134,9 @@ public class OrderBackServiceImpl implements OrderBackService {
         }
     }
 
-    public ResponseEntity<?> ShipOrder(Long orderId, String express) {
+    public ResponseEntity<?> ShipOrder(Long orderId, int express_id, String express_num) {
         try {
-            int res = orderBackMapper.ShipOrder(orderId, express);
+            int res = orderBackMapper.ShipOrder(orderId, express_id ,express_num);
             System.out.println(res);
             if (res == 1) {
                 return ResponseEntity.ok().body("发货成功");

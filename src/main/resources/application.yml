@@ -4,7 +4,7 @@ spring:
       # 配置静态资源路径，包含类路径下的 static 目录和文件系统中的上传目录
       static-locations:
         - classpath:/static/
-        - file:G:/blueseaplus/files/
+        - file:/www/wwwroot/files/
       cache:
         cachecontrol:
           max-age: 0
@@ -12,12 +12,12 @@ spring:
           private: false
           must-revalidate: false
   mvc:
-    static-path-pattern: /static/**
+    static-path-pattern: /**
   application:
     name: backend
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/blueseaplus
+    url: jdbc:mysql://127.0.0.1:3306/blueseaplus
     username: root
     password: root
   data:
@@ -31,6 +31,21 @@ spring:
           max-idle: 10
           min-idle: 5
           time-between-eviction-runs: 15s
+    # RabbitMQ配置
+    rabbitmq:
+      host: 127.0.0.1  # MQ服务地址，虚拟机环境填对应IP
+      port: 5672       # 通信端口
+      username: guest  # 用户名，生产环境建议修改
+      password: guest  # 密码，生产环境建议修改
+      virtual-host: /  # 虚拟主机，默认/
+      # 消息确认配置（确保消息不丢失）
+      publisher-confirm-type: correlated  # 生产者确认机制
+      publisher-returns: true             # 消息返回机制
+      listener:
+        simple:
+          acknowledge-mode: manual        # 消费者手动确认（避免重复消费）
+          concurrency: 1                  # 消费者核心线程数
+          max-concurrency: 5              # 消费者最大线程数
   mail:
     host: smtp.qq.com
     username: 2567407595@qq.com
@@ -59,12 +74,12 @@ server:
 # 文件存储目录
 image:
   storage:
-    directory: G:\\blueseaplus\\files\\
+    directory: /www/wwwroot/files/
 
 alipay:
   # 公共配置
-  returnUrl: http://192.168.1.102/pc/order/
-  notifyUrl: http://frp-fly.com:12435/order/pay/notify
+  returnUrl: http://112.74.49.50/pages/mine/order/detail
+  notifyUrl: http://112.74.49.50/backApi/order/pay/notify
 
   # 沙箱环境（已修正私钥格式）
   sandbox:
@@ -86,10 +101,20 @@ jwt:
   refresh:
     secret: BlueSeaTechnologyUsedDigitalMallRefreshKey123456
     expiration: 259200000  # 3天（毫秒）
+  verify:
+    secret: BlueSeaTechnologyUsedDigitalMallVerifyKey123456
+    expiration: 600000  # 10分钟（毫秒）
 kuaidi100:
   customer: 76BB0E861727D7091F9356E8BF9B99F1  # 你的customer
   key: aTYOnUOK5146                          # 你的key
   api-url: https://poll.kuaidi100.com/poll/query.do
 amap:
- key: 3bfd32a107b18cfdc2c513f2071ecd1f
- api-url: https://restapi.amap.com/v3/config/district
+  key: 3bfd32a107b18cfdc2c513f2071ecd1f
+  api-url: https://restapi.amap.com/v3/config/district
+# 阿里云短信配置
+aliyun:
+  sms:
+    access-key-id: your-access-key-id
+    access-key-secret: your-access-key-secret
+    sign-name: 您的签名名称
+    template-id: SMS_123456789

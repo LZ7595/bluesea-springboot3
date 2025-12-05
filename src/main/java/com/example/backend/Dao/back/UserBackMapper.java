@@ -1,8 +1,6 @@
 package com.example.backend.Dao.back;
 
-import com.example.backend.Entity.User;
-import com.example.backend.Entity.back.UserDetailsBack;
-import com.example.backend.Entity.back.UserDetailsBack;
+import com.example.backend.Model.Entity.back.UserDetailsBack;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;

@@ -1,7 +1,7 @@
 package com.example.backend.Impl;
 
 import com.example.backend.Dao.AddressMapper;
-import com.example.backend.Entity.Address;
+import com.example.backend.Model.Entity.Address;
 import com.example.backend.Service.AddressService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

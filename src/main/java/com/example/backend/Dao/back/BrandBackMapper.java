@@ -1,7 +1,7 @@
 package com.example.backend.Dao.back;
 
-import com.example.backend.Entity.Brand;
-import com.example.backend.Entity.BrandList;
+import com.example.backend.Model.Entity.Brand;
+import com.example.backend.Model.Vo.LabelList;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
@@ -75,5 +75,5 @@ public interface BrandBackMapper {
             "</where>" +
             "ORDER BY b.brand_id ASC " +
             "</script>")
-    List<BrandList> getBrandList(@Param("keyword") String keyword, @Param("categoryId") Long categoryId);
+    List<LabelList> getBrandList(@Param("keyword") String keyword, @Param("categoryId") Long categoryId);
 }

@@ -1,7 +1,7 @@
 package com.example.backend.Dao;
 
-import com.example.backend.Entity.Category;
-import com.example.backend.Entity.CategoryBrandVO;
+import com.example.backend.Model.Entity.Category;
+import com.example.backend.Model.Vo.CategoryBrandVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 

@@ -1,10 +1,11 @@
 package com.example.backend.Impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import com.example.backend.Entity.Enum.ErrorType;
-import com.example.backend.Entity.User;
-import com.example.backend.Entity.UserInfo;
-import com.example.backend.Entity.UserSecurity;
+import cn.hutool.core.convert.Convert;
+import com.example.backend.Model.Enum.ErrorType;
+import com.example.backend.Model.Entity.User;
+import com.example.backend.Model.Vo.UserInfo;
+import com.example.backend.Model.Vo.UserSecurity;
 import com.example.backend.Utils.*;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cglib.beans.BeanMap;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,39 +37,102 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private UserMapper userMapper;
 
+    @Autowired
+    private SensitiveInfo sensitiveInfo;
     @Resource
     private Jwt jwt;
 
-    @Resource
-    private Cookie cookie;
+    @Autowired
+    private Common common;
+
+    @Autowired
+    private VerificationCodeUtil verificationCodeUtil;
+
+    @Autowired
+    private Encryption encryption;
+
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
     @Value("${jwt.access.expiration}")
     private long accessTokenExpirationTime;
 
-    @Autowired
-    private Email emailsend;
-    private final Map<String, String> verificationCodes = new HashMap<>();
-    private final Map<String, LocalDateTime> codeExpiration = new HashMap<>();
-
-    private static final long CODE_EXPIRATION_TIME = 5 * 60 * 1000; // 验证码过期时间，5分钟
 
     // 根据用户 ID 获取用户综合信息
     public Optional<UserInfo> getUserInfoById(Integer userId) {
         return userMapper.getUserInfoById(userId);
     }
 
-    public ResponseEntity<?> updateUserInfo(Integer userId, String username, String gender, Date birthday, String avatar) {
+    public ResponseEntity<?> updateUserInfo(Integer userId, String username, String gender, Date birthday, String avatar, HttpServletRequest request) {
         try {
+            // 1. 更新数据库
             userMapper.updateUsername(userId, username);
             userMapper.updateBirthday(userId, new java.sql.Date(birthday.getTime()));
             userMapper.updateGender(userId, gender);
             userMapper.updateAvatar(userId, avatar);
+
+            // 2. 精确更新缓存（通过accessToken）
+            boolean cacheUpdated = updateUserCacheByToken(userId, username, gender, birthday, avatar, request);
+
+            if (!cacheUpdated) {
+                logger.warn("缓存更新失败，但数据库已更新，userId: {}", userId);
+            }
+
             return ResponseEntity.ok("修改成功");
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body("修改失败");
+        }
+    }
+
+    private boolean updateUserCacheByToken(Integer userId, String username, String gender, Date birthday, String avatar, HttpServletRequest request) {
+        try {
+            // 1. 使用相同的方式提取accessToken
+            String accessToken = common.extractAccessTokenByClient(request);
+            if (accessToken == null) {
+                logger.warn("无法获取accessToken，跳过缓存更新");
+                return false;
+            }
+
+            String redisKey = AUTH_USER_KEY + accessToken;
+
+            // 2. 检查缓存是否存在
+            if (!stringRedisTemplate.hasKey(redisKey)) {
+                logger.warn("缓存键不存在: {}", redisKey);
+                return false;
+            }
+
+            // 3. 验证缓存中的用户ID是否匹配
+            Map<Object, Object> userMap = stringRedisTemplate.opsForHash().entries(redisKey);
+            if (userMap == null || userMap.isEmpty()) {
+                logger.warn("缓存数据为空: {}", redisKey);
+                return false;
+            }
+
+            Integer cachedUserId = Convert.toInt(userMap.get("id"));
+            if (!userId.equals(cachedUserId)) {
+                logger.warn("用户ID不匹配，缓存userId: {}，请求userId: {}", cachedUserId, userId);
+                return false;
+            }
+
+            // 4. 更新缓存（与getUserInfo相同的字段结构）
+            Map<String, Object> updates = new HashMap<>();
+            if (username != null) updates.put("username", username);
+            if (gender != null) updates.put("gender", gender);
+            if (birthday != null) updates.put("birthday", birthday.toString());
+            if (avatar != null) updates.put("avatar", avatar);
+
+            stringRedisTemplate.opsForHash().putAll(redisKey, updates);
+
+            // 5. 刷新过期时间（可选）
+            stringRedisTemplate.expire(redisKey, accessTokenExpirationTime, TimeUnit.MILLISECONDS);
+
+            logger.info("用户缓存更新成功，userId: {}, redisKey: {}", userId, redisKey);
+            return true;
+
+        } catch (Exception e) {
+            logger.error("通过token更新用户缓存失败，userId: {}", userId, e);
+            return false;
         }
     }
 
@@ -80,329 +145,7 @@ public class UserServiceImpl implements UserService {
         }
     }
 
-    public ResponseEntity<?> sendVerificationCode(String info, String type, Integer num) {
-        try {
-            if (type.equals("changeEmail")) {
-                if (num == 0) {
-                    String code = generateCode();
-                    verificationCodes.put(info, code);
-                    LocalDateTime expirationTime = LocalDateTime.now().plusSeconds(CODE_EXPIRATION_TIME / 1000);
-                    codeExpiration.put(info, expirationTime);
-                    System.out.println(info + code);
-                    emailsend.sendEmail(info, code, "换绑验证");
-                    ResponseEntity<?> storeResult = storeCodeInDatabase(info, code, expirationTime, type);
-                    if (storeResult.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
-                        return storeResult;
-                    }
-                } else if (num == 1) {
-                    Integer isEmailRegistered = userMapper.selectEmail(info);
-                    System.out.println(isEmailRegistered);
-                    if (isEmailRegistered == 1) {
-                        return ResponseEntity.status(404)
-                                .body(ErrorType.EMAIL_REGISTERED.toErrorResponse());
-                    } else {
-                        String code = generateCode();
-                        verificationCodes.put(info, code);
-                        LocalDateTime expirationTime = LocalDateTime.now().plusSeconds(CODE_EXPIRATION_TIME / 1000);
-                        codeExpiration.put(info, expirationTime);
-                        System.out.println(info + code);
-                        emailsend.sendEmail(info, code, "换绑验证");
-                        ResponseEntity<?> storeResult = storeCodeInDatabase(info, code, expirationTime, type);
-                        if (storeResult.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
-                            return storeResult;
-                        }
-                    }
-                }
-            } else if (type.equals("changePhone")) {
-                if (num == 0) {
-                    String code = generateCode();
-                    verificationCodes.put(info, code);
-                    LocalDateTime expirationTime = LocalDateTime.now().plusSeconds(CODE_EXPIRATION_TIME / 1000);
-                    codeExpiration.put(info, expirationTime);
-                    boolean isSent = SmsSender.sendSms(info, code);
-                    if (!isSent) {
-                        return ResponseEntity.status(500).body(ErrorType.CODE_SENDING_FAILED.toErrorResponse());
-                    }
-                    ResponseEntity<?> storeResult = storeCodeInDatabase(info, code, expirationTime, type);
-                    if (storeResult.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
-                        return storeResult;
-                    }
-                } else if (num == 1) {
-                    Integer isPhoneRegistered = userMapper.selectPhone(info);
-                    if (isPhoneRegistered == 1) {
-                        return ResponseEntity.status(404)
-                                .body(ErrorType.EMAIL_REGISTERED.toErrorResponse());
-                    } else {
-                        String code = generateCode();
-                        verificationCodes.put(info, code);
-                        LocalDateTime expirationTime = LocalDateTime.now().plusSeconds(CODE_EXPIRATION_TIME / 1000);
-                        codeExpiration.put(info, expirationTime);
-                        boolean isSent = SmsSender.sendSms(info, code);
-                        if (!isSent) {
-                            return ResponseEntity.status(500).body(ErrorType.CODE_SENDING_FAILED.toErrorResponse());
-                        }
-                        ResponseEntity<?> storeResult = storeCodeInDatabase(info, code, expirationTime, type);
-                        if (storeResult.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
-                            return storeResult;
-                        }
-                    }
-                }
-            } else if (type.equals("changePasswordByEmail")) {
-                Integer isEmailRegistered = userMapper.selectEmail(info);
-                if (isEmailRegistered != 1) {
-                    return ResponseEntity.status(404)
-                            .body(ErrorType.EMAIL_NOT_REGISTERED.toErrorResponse());
-                }
-                String code = generateCode();
-                verificationCodes.put(info, code);
-                LocalDateTime expirationTime = LocalDateTime.now().plusSeconds(CODE_EXPIRATION_TIME / 1000);
-                codeExpiration.put(info, expirationTime);
-                System.out.println(info + code);
-                emailsend.sendEmail(info, code, "修改密码验证");
-                ResponseEntity<?> storeResult = storeCodeInDatabase(info, code, expirationTime, type);
-                if (storeResult.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
-                    return storeResult;
-                }
-            } else if (type.equals("changePasswordByPhone")) {
-                Integer isPhoneRegistered = userMapper.selectPhone(info);
-                if (isPhoneRegistered != 1) {
-                    return ResponseEntity.status(404)
-                            .body(ErrorType.PHONE_NOT_REGISTERED.toErrorResponse());
-                }
-                String code = generateCode();
-                verificationCodes.put(info, code);
-                LocalDateTime expirationTime = LocalDateTime.now().plusSeconds(CODE_EXPIRATION_TIME / 1000);
-                codeExpiration.put(info, expirationTime);
-                boolean isSent = SmsSender.sendSms(info, code);
-                if (!isSent) {
-                    return ResponseEntity.status(500).body(ErrorType.CODE_SENDING_FAILED.toErrorResponse());
-                }
-                ResponseEntity<?> storeResult = storeCodeInDatabase(info, code, expirationTime, type);
-                if (storeResult.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
-                    return storeResult;
-                }
-            }
-            return ResponseEntity.ok("验证码已发送");
-        } catch (Exception e) {
-            // 更详细的异常日志记录
-            System.err.println("发送验证码时发生异常: " + e.getMessage());
-            return ResponseEntity.status(500).body(ErrorType.CODE_SENDING_FAILED.toErrorResponse());
-        }
-    }
 
-    private ResponseEntity<?> storeCodeInDatabase(String info, String code, LocalDateTime expirationTime, String type) {
-        // 先尝试更新已存在的记录
-        System.out.println(code);
-        System.out.println(expirationTime);
-        try {
-            if (type.equals("changeEmail")) {
-                Integer rowsUpdated = userMapper.updateEmailCode(code, expirationTime, info);
-                System.out.println(rowsUpdated);
-                if (rowsUpdated == 0) {
-                    return ResponseEntity.status(404)
-                            .body(ErrorType.EMAIL_NOT_REGISTERED.toErrorResponse());
-                }
-            } else if (type.equals("changePhone")) {
-                Integer rowsUpdated = userMapper.updatePhoneCode(code, expirationTime, info);
-                System.out.println(rowsUpdated);
-                if (rowsUpdated == 0) {
-                    return ResponseEntity.status(404)
-                            .body(ErrorType.EMAIL_NOT_REGISTERED.toErrorResponse());
-                }
-            } else if (type.equals("changePasswordByEmail")) {
-                Integer rowsUpdated = userMapper.updateEmailCode(code, expirationTime, info);
-                if (rowsUpdated == 0) {
-                    return ResponseEntity.status(404)
-                            .body(ErrorType.EMAIL_NOT_REGISTERED.toErrorResponse());
-                }
-            } else if (type.equals("changePasswordByPhone")) {
-                Integer rowsUpdated = userMapper.updatePhoneCode(code, expirationTime, info);
-                if (rowsUpdated == 0) {
-                    return ResponseEntity.status(404)
-                            .body(ErrorType.PHONE_NOT_REGISTERED.toErrorResponse());
-                }
-            }
-
-        } catch (Exception e) {
-            // 更详细的异常日志记录
-            System.err.println("存储验证码时发生异常: " + e.getMessage());
-            return ResponseEntity.status(500)
-                    .body(ErrorType.CODE_INSERT_FAILED.toErrorResponse());
-        }
-        return ResponseEntity.ok("验证码已存储");
-    }
-
-    public ResponseEntity<?> confirmChange(Integer userId, String info, String code, String type, Integer num) {
-        try {
-            String storedCode = null;
-            Integer isRegistered = 0;
-            boolean codeValid = false;
-
-            if (type.equals("changeEmail")) {
-                storedCode = num == 0 ? userMapper.selectEmailCode(info) : null;
-                isRegistered = userMapper.selectEmail(info);
-            } else if (type.equals("changePhone")) {
-                storedCode = num == 0 ? userMapper.selectPhoneCode(info) : null;
-                isRegistered = userMapper.selectPhone(info);
-            }
-
-            if (isRegistered >= 1 && num == 1) {
-                return ResponseEntity.status(404)
-                        .body(ErrorType.EMAIL_REGISTERED.toErrorResponse());
-            } else if (num == 1) {
-                codeValid = validateCode(info, code);
-                if (!codeValid) {
-                    return ResponseEntity.status(404)
-                            .body(ErrorType.CODE_INVALID_FAILED.toErrorResponse());
-                } else {
-                    if (type.equals("changeEmail")) {
-                        userMapper.updateEmail(userId, info);
-                    } else if (type.equals("changePhone"))
-                        userMapper.updatePhone(userId, info);
-                }
-            } else if (storedCode != null && storedCode.equals(code)) {
-                clearCodeFromDatabase(userId);
-                return ResponseEntity.ok().body("验证成功");
-            } else {
-                return ResponseEntity.status(404)
-                        .body(ErrorType.CODE_INVALID_FAILED.toErrorResponse());
-            }
-        } catch (Exception e) {
-            return ResponseEntity.status(500)
-                    .body(ErrorType.CODE_INVALID_FAILED.toErrorResponse());
-        }
-        return null;
-    }
-
-    @Override
-    public boolean validateCode(String info, String code) {
-        LocalDateTime expiration = codeExpiration.get(info);
-        if (expiration == null || expiration.isBefore(LocalDateTime.now())) {
-            return false;
-        }
-        return verificationCodes.get(info).equals(code);
-    }
-
-    private void clearCodeFromDatabase(Integer id) {
-        userMapper.clearCode(id);
-    }
-
-    private String generateCode() {
-        Random random = new Random();
-        StringBuilder code = new StringBuilder();
-        for (int i = 0; i < 6; i++) {
-            code.append(random.nextInt(10));
-        }
-        return code.toString();
-    }
-
-    // 定期清理过期验证码
-    @Scheduled(fixedRate = 60 * 1000) // 每分钟检查一次
-    public void clearExpiredCodes() {
-        LocalDateTime now = LocalDateTime.now();
-        codeExpiration.entrySet().removeIf(entry -> entry.getValue().isBefore(now));
-        verificationCodes.keySet().removeIf(key -> codeExpiration.get(key) == null);
-        // 清除数据库中的过期验证码
-        userMapper.deleteExpiredCodes(now);
-    }
-
-    @Override
-    public ResponseEntity<?> confirmChangePasswordByOldPassword(Integer userId, String oldPassword) {
-        try {
-            String storedPassword = userMapper.getPasswordById(userId);
-            if (storedPassword != null && Encryption.verifyPassword(oldPassword, storedPassword)) {
-                return ResponseEntity.ok("旧密码验证通过");
-            }
-            return ResponseEntity.status(404).body(ErrorType.OLD_PASSWORD_INCORRECT.toErrorResponse());
-        } catch (Exception e) {
-            System.err.println("验证旧密码时发生异常: " + e.getMessage());
-            return ResponseEntity.status(500).body(ErrorType.PASSWORD_VERIFICATION_FAILED.toErrorResponse());
-        }
-    }
-
-    @Override
-    public ResponseEntity<?> confirmChangePasswordByEmail(Integer userId, String email, String code) {
-        try {
-            Integer isEmailRegistered = userMapper.selectEmail(email);
-            if (isEmailRegistered != 1) {
-                return ResponseEntity.status(404).body(ErrorType.EMAIL_NOT_REGISTERED.toErrorResponse());
-            }
-            String storedCode = userMapper.selectEmailCode(email);
-            if (storedCode != null && storedCode.equals(code) && validateCode(email, code)) {
-                return ResponseEntity.ok("邮箱验证通过");
-            }
-            return ResponseEntity.status(404).body(ErrorType.CODE_INVALID_FAILED.toErrorResponse());
-        } catch (Exception e) {
-            System.err.println("验证邮箱验证码时发生异常: " + e.getMessage());
-            return ResponseEntity.status(500).body(ErrorType.CODE_VERIFICATION_FAILED.toErrorResponse());
-        }
-    }
-
-    @Override
-    public ResponseEntity<?> confirmChangePasswordByPhone(Integer userId, String phone, String code) {
-        try {
-            Integer isPhoneRegistered = userMapper.selectPhone(phone);
-            if (isPhoneRegistered != 1) {
-                return ResponseEntity.status(404).body(ErrorType.PHONE_NOT_REGISTERED.toErrorResponse());
-            }
-            String storedCode = userMapper.selectPhoneCode(phone);
-            if (storedCode != null && storedCode.equals(code) && validateCode(phone, code)) {
-                return ResponseEntity.ok("手机验证通过");
-            }
-            return ResponseEntity.status(404).body(ErrorType.CODE_INVALID_FAILED.toErrorResponse());
-        } catch (Exception e) {
-            System.err.println("验证手机验证码时发生异常: " + e.getMessage());
-            return ResponseEntity.status(500).body(ErrorType.CODE_VERIFICATION_FAILED.toErrorResponse());
-        }
-    }
-
-    @Override
-    public ResponseEntity<?> changePasswordByOldPassword(Integer userId, String oldPassword, String newPassword) {
-        ResponseEntity<?> confirmResult = confirmChangePasswordByOldPassword(userId, oldPassword);
-        if (confirmResult.getStatusCode() == HttpStatus.OK) {
-            try {
-                String encryptedNewPassword = Encryption.encryptPassword(newPassword);
-                userMapper.updatePassword(userId, encryptedNewPassword);
-                return ResponseEntity.ok("密码修改成功");
-            } catch (Exception e) {
-                System.err.println("修改密码时发生异常: " + e.getMessage());
-                return ResponseEntity.status(500).body(ErrorType.PASSWORD_UPDATE_FAILED.toErrorResponse());
-            }
-        }
-        return confirmResult;
-    }
-
-    @Override
-    public ResponseEntity<?> changePasswordByEmail(Integer userId, String email, String code, String newPassword) {
-        ResponseEntity<?> confirmResult = confirmChangePasswordByEmail(userId, email, code);
-        if (confirmResult.getStatusCode() == HttpStatus.OK) {
-            try {
-                String encryptedNewPassword = Encryption.encryptPassword(newPassword);
-                userMapper.updatePassword(userId, encryptedNewPassword);
-                return ResponseEntity.ok("密码修改成功");
-            } catch (Exception e) {
-                System.err.println("修改密码时发生异常: " + e.getMessage());
-                return ResponseEntity.status(500).body(ErrorType.PASSWORD_UPDATE_FAILED.toErrorResponse());
-            }
-        }
-        return confirmResult;
-    }
-
-    @Override
-    public ResponseEntity<?> changePasswordByPhone(Integer userId, String phone, String code, String newPassword) {
-        ResponseEntity<?> confirmResult = confirmChangePasswordByPhone(userId, phone, code);
-        if (confirmResult.getStatusCode() == HttpStatus.OK) {
-            try {
-                String encryptedNewPassword = Encryption.encryptPassword(newPassword);
-                userMapper.updatePassword(userId, encryptedNewPassword);
-                return ResponseEntity.ok("密码修改成功");
-            } catch (Exception e) {
-                System.err.println("修改密码时发生异常: " + e.getMessage());
-                return ResponseEntity.status(500).body(ErrorType.PASSWORD_UPDATE_FAILED.toErrorResponse());
-            }
-        }
-        return confirmResult;
-    }
 
     public ResponseEntity<?> searchUserByUserId(Integer userId) {
         try {
@@ -435,7 +178,7 @@ public class UserServiceImpl implements UserService {
 
     public UserInfo getUserInfo(HttpServletRequest request) {
         // 1. 根据客户端类型提取 accessToken（核心修改）
-        String accessToken = extractAccessTokenByClient(request);
+        String accessToken = common.extractAccessTokenByClient(request);
         if (accessToken == null) {
             return null; // 或抛出未授权异常
         }
@@ -447,7 +190,7 @@ public class UserServiceImpl implements UserService {
         UserInfo userInfo = BeanUtil.mapToBean(getUserMap, UserInfo.class, false);
         if (userInfo != null && userInfo.getId() != null) {
             // 缓存命中，直接返回
-            return userInfo;
+            return sensitiveInfo.maskSensitiveInfo(userInfo);
         }
 
         // 3. 缓存未命中，从数据库获取（适配多端 Token 解析）
@@ -461,12 +204,24 @@ public class UserServiceImpl implements UserService {
             // 从数据库查询用户信息
             userInfo = userMapper.getUserInfo(userId);
             if (userInfo != null) {
-                // 4. 将用户信息存入 Redis（原有逻辑保留）
+                UserInfo maskedUserInfo = sensitiveInfo.maskSensitiveInfo(userInfo);
+                // 1. 将userInfo对象转为BeanMap（自动映射所有属性）
+                BeanMap beanMap = BeanMap.create(maskedUserInfo);
+
+                // 2. 定义需要存入Redis的字段（按需筛选，避免冗余）
+                String[] includeFields = {"id", "username", "role", "avatar", "email", "phone", "gender", "birthday", "status", "register_time"};
+
+                // 3. 转换为目标Map，并处理类型（转为String，适配Redis存储）
                 Map<String, Object> userHash = new HashMap<>();
-                userHash.put("id", userInfo.getId().toString());
-                userHash.put("username", userInfo.getUsername());
-                userHash.put("role", userInfo.getRole().toString());
-                userHash.put("avatar", userInfo.getAvatar());
+                for (String field : includeFields) {
+                    if (beanMap.containsKey(field)) {
+                        Object value = beanMap.get(field);
+                        // 统一转为String（避免Redis存储类型问题，如Long转String）
+                        userHash.put(field, value != null ? value.toString() : null);
+                    }
+                }
+
+                // 4. 存入Redis（原有逻辑不变）
                 stringRedisTemplate.opsForHash().putAll(redisKey, userHash);
                 stringRedisTemplate.expire(redisKey, accessTokenExpirationTime, TimeUnit.MILLISECONDS);
             }
@@ -477,31 +232,20 @@ public class UserServiceImpl implements UserService {
         return userInfo;
     }
 
-    /**
-     * 根据客户端类型提取 accessToken（与拦截器逻辑一致）
-     */
-    private String extractAccessTokenByClient(HttpServletRequest request) {
-        String clientType = request.getHeader("Client-Type");
-        if (clientType == null) {
-            clientType = "h5"; // 默认按H5处理
-        }
 
-        switch (clientType) {
-            case "app":
-            case "h5":
-                // App/H5从Cookie提取
-                return cookie.getCookieValue(request, "accessToken");
-            case "miniprogram":
-                // 小程序从Authorization头提取（格式：Bearer token）
-                String authHeader = request.getHeader("Authorization");
-                if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                    return authHeader.substring(7).trim();
-                }
-                return null;
-            default:
-                logger.warn("未知客户端类型: {}", clientType);
-                return null;
-        }
+
+
+    private Map<String, Object> createSuccessResponse(String message) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", message);
+        return response;
     }
 
+    private Map<String, Object> createErrorResponse(String message) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", false);
+        response.put("message", message);
+        return response;
+    }
 }

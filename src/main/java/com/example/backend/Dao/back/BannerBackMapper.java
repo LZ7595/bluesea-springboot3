@@ -1,10 +1,8 @@
 package com.example.backend.Dao.back;
 
-import com.example.backend.Entity.Banner;
-import com.example.backend.Entity.Product;
+import com.example.backend.Model.Entity.Banner;
 import org.apache.ibatis.annotations.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 

@@ -1,6 +1,8 @@
 package com.example.backend.Controller;
 
-import com.example.backend.Entity.*;
+import com.example.backend.Model.Vo.ProductDetails;
+import com.example.backend.Model.Vo.ProductPayInfo;
+import com.example.backend.Model.Entity.ProductPromotion;
 import com.example.backend.Service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

@@ -1,6 +1,6 @@
 package com.example.backend.Dao;
 
-import com.example.backend.Entity.WebSocket.Message;
+import com.example.backend.Model.WebSocket.Message;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;

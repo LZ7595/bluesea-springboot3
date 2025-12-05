@@ -1,8 +1,8 @@
 package com.example.backend.Service;
 
 
-import com.example.backend.Entity.PageResult;
-import com.example.backend.Entity.ProductResponse;
+import com.example.backend.Model.Dto.PageResult;
+import com.example.backend.Model.Response.ProductResponse;
 
 import java.io.IOException;
 import java.util.List;

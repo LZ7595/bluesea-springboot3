@@ -28,8 +28,8 @@ public class OrderBackController {
     }
 
     @PostMapping("/ship")
-    public ResponseEntity<?> ShipOrder(@RequestParam Long order_id,@RequestParam String express) {
-        return orderBackService.ShipOrder(order_id,express);
+    public ResponseEntity<?> ShipOrder(@RequestParam Long order_id, @RequestParam int express_id ,@RequestParam String express_num) {
+        return orderBackService.ShipOrder(order_id,express_id,express_num);
     }
 //    @PutMapping("/update")
 //    public String updateProduct(@RequestBody OrderDetailsBack order) {

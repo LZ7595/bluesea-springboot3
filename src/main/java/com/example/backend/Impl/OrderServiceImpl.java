@@ -13,13 +13,23 @@ import com.alipay.api.response.AlipayTradePagePayResponse;
 import com.alipay.api.response.AlipayTradeQueryResponse;
 import com.alipay.api.response.AlipayTradeWapPayResponse;
 import com.example.backend.Config.AlipayConfig;
+import com.example.backend.Config.RabbitConfig;
 import com.example.backend.Dao.*;
-import com.example.backend.Entity.*;
+import com.example.backend.Model.Dto.PageResult;
+import com.example.backend.Model.Dto.ProductPromotionWrapper;
+import com.example.backend.Model.Dto.PromotionUsedCountDTO;
+import com.example.backend.Model.Entity.*;
+import com.example.backend.Model.Message.OrderMessage;
+import com.example.backend.Model.Vo.OrderDetail;
+import com.example.backend.Model.Vo.OrderDisplay;
+import com.example.backend.Model.Vo.ProductPayInfo;
 import com.example.backend.Service.OrderService;
 import com.example.backend.Utils.PromotionUtil;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -39,6 +49,7 @@ import static com.example.backend.Utils.RedisConstants.PRODUCT_DETAILS_KEY;
 import static com.example.backend.Utils.RedisConstants.PRODUCT_PROMOTIONS_KEY;
 
 @Service
+@Slf4j
 public class OrderServiceImpl implements OrderService {
 
     @Value("${alipay.sandbox.publicKey}")
@@ -59,12 +70,17 @@ public class OrderServiceImpl implements OrderService {
     private ProductPromotionMapper productPromotionMapper;
     @Autowired
     private AddressMapper addressMapper;
+
+    @Autowired
+    private ExpressMapper expressMapper;
+
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
-    private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
 
-    public Order getOrderById(Long orderId){
+    public Order getOrderById(Long orderId) {
         return orderMapper.getOrderById(orderId);
     }
 
@@ -387,9 +403,42 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
+        // 获取用户地址信息（用于获取手机号）
+        Address address = addressMapper.selectAddressById(addressId.intValue());
+        String phone = address != null ? address.getPhone() : "";
+
+        // 构建订单消息
+        OrderMessage orderMessage = new OrderMessage();
+        orderMessage.setOrderId(orderId);
+        orderMessage.setUserId(userId);
+        orderMessage.setOrderNo(orderNo);
+        orderMessage.setPhone(phone);
+        orderMessage.setOrderStatus(order.getOrder_status());
+
+        // 1. 发送即时消息：订单创建通知（用于日志记录等）
+        rabbitTemplate.convertAndSend(
+                RabbitConfig.ORDER_NOTIFY_EXCHANGE,
+                RabbitConfig.ORDER_NOTIFY_ROUTING_KEY,
+                orderMessage
+        );
+        log.info("订单创建成功，已发送通知消息: orderId={}", orderId);
+
+        // 2. 发送延迟消息：30分钟后检查订单是否支付
+        rabbitTemplate.convertAndSend(
+                RabbitConfig.ORDER_DELAY_EXCHANGE,
+                RabbitConfig.ORDER_CANCEL_ROUTING_KEY,
+                orderMessage,
+                message -> {
+                    // 设置延迟时间：30分钟（单位：毫秒）
+                    message.getMessageProperties().setHeader("x-delay", 30 * 60 * 1000);
+                    return message;
+                }
+        );
+        log.info("订单创建成功，已发送延迟取消消息: orderId={}", orderId);
+        // ============================================================
+
         return orderId;
     }
-
 
 
     @Override
@@ -399,6 +448,10 @@ public class OrderServiceImpl implements OrderService {
             if (orderDetail != null) {
                 Address address = addressMapper.getAddressByOrderId(orderId);
                 orderDetail.setAddress(address);
+                if (orderDetail.getExpress_id() != null) {
+                    Express express = expressMapper.getExpressById(orderDetail.getExpress_id());
+                    orderDetail.setExpress(express);
+                }
                 List<OrderItem> orderItems = orderItemMapper.getOrderItemsByOrderId(orderId);
                 List<OrderItem> orderItemDetails = orderItems.stream().map(item -> {
                     item.setProduct(getProductPayInfo(item.getProduct_id(), item.getPromotion_id()));
@@ -410,6 +463,7 @@ public class OrderServiceImpl implements OrderService {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("订单不存在");
             }
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("获取订单详情失败");
         }
     }
@@ -608,7 +662,7 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    public ResponseEntity<?> getOrdersByUserIdAndStatus(Integer userId, String status, int currentPage, int pageSize){
+    public ResponseEntity<?> getOrdersByUserIdAndStatus(Integer userId, String status, int currentPage, int pageSize) {
         try {
             int offset = (currentPage - 1) * pageSize;
             List<OrderDisplay> orders = orderMapper.getOrdersByUserIdAndStatus(userId, status, offset, pageSize);
@@ -626,12 +680,12 @@ public class OrderServiceImpl implements OrderService {
                     order.setOrder_images(imgUrls);
                     return order;
                 }).collect(Collectors.toList());
-                PageResult<OrderDisplay> PageResult  = new PageResult<>(orderDisplayList, total,currentPage, pageSize, (int) Math.ceil((double) total / pageSize));
+                PageResult<OrderDisplay> PageResult = new PageResult<>(orderDisplayList, total, currentPage, pageSize, (int) Math.ceil((double) total / pageSize));
                 return ResponseEntity.ok(PageResult);
-            }else {
+            } else {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("未找到订单");
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             e.getMessage();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }

@@ -1,3 +1,4 @@
+// com.example.backend.Utils.SmsSender.java
 package com.example.backend.Utils;
 
 import com.aliyun.dysmsapi20170525.Client;
@@ -6,32 +7,39 @@ import com.aliyun.dysmsapi20170525.models.SendSmsResponse;
 import com.aliyun.teaopenapi.models.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
+@Component
 public class SmsSender {
     private static final Logger logger = LoggerFactory.getLogger(SmsSender.class);
-    // 阿里云 AccessKey ID
-    private static final String ACCESS_KEY_ID = "your-access-key-id";
-    // 阿里云 AccessKey Secret
-    private static final String ACCESS_KEY_SECRET = "your-access-key-secret";
-    // 短信签名名称
-    private static final String SIGN_NAME = "your-sign-name";
-    // 短信模板 ID
-    private static final String TEMPLATE_ID = "your-template-id";
 
-    public static boolean sendSms(String phoneNumber, String code) {
+    @Value("${aliyun.sms.access-key-id}")
+    private String accessKeyId;
+
+    @Value("${aliyun.sms.access-key-secret}")
+    private String accessKeySecret;
+
+    @Value("${aliyun.sms.sign-name}")
+    private String signName;
+
+    @Value("${aliyun.sms.template-id}")
+    private String templateId;
+
+    public boolean sendSms(String phoneNumber, String code) {
         try {
             // 配置客户端
             Config config = new Config()
-                    .setAccessKeyId(ACCESS_KEY_ID)
-                    .setAccessKeySecret(ACCESS_KEY_SECRET);
+                    .setAccessKeyId(accessKeyId)
+                    .setAccessKeySecret(accessKeySecret);
             config.endpoint = "dysmsapi.aliyuncs.com";
             Client client = new Client(config);
 
             // 构建发送短信请求
             SendSmsRequest sendSmsRequest = new SendSmsRequest()
                     .setPhoneNumbers(phoneNumber)
-                    .setSignName(SIGN_NAME)
-                    .setTemplateCode(TEMPLATE_ID)
+                    .setSignName(signName)
+                    .setTemplateCode(templateId)
                     .setTemplateParam("{\"code\":\"" + code + "\"}");
 
             // 发送短信
@@ -40,7 +48,8 @@ public class SmsSender {
                 logger.info("向手机号 {} 发送验证码: {} 成功", phoneNumber, code);
                 return true;
             } else {
-                logger.error("向手机号 {} 发送验证码失败，错误码: {}, 错误信息: {}", phoneNumber, response.getBody().getCode(), response.getBody().getMessage());
+                logger.error("向手机号 {} 发送验证码失败，错误码: {}, 错误信息: {}",
+                        phoneNumber, response.getBody().getCode(), response.getBody().getMessage());
                 return false;
             }
         } catch (Exception e) {

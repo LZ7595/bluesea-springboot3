@@ -1,6 +1,6 @@
 package com.example.backend.Dao;
 
-import com.example.backend.Entity.ShoppingCart;
+import com.example.backend.Model.Entity.ShoppingCart;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
