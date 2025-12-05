@@ -1,7 +1,7 @@
 package com.example.backend.Dao.back;
 
-import com.example.backend.Entity.Product;
-import com.example.backend.Entity.back.ProductDetailsBack;
+import com.example.backend.Model.Entity.Product;
+import com.example.backend.Model.Entity.back.ProductDetailsBack;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;

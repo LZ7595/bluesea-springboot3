@@ -1,8 +1,8 @@
 package com.example.backend.Impl.back;
 
 import com.example.backend.Dao.back.BannerBackMapper;
-import com.example.backend.Entity.Banner;
-import com.example.backend.Entity.PageResult;
+import com.example.backend.Model.Entity.Banner;
+import com.example.backend.Model.Dto.PageResult;
 import com.example.backend.Service.back.BannerBackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

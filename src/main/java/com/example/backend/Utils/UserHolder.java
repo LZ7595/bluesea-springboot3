@@ -1,6 +1,6 @@
 package com.example.backend.Utils;
 
-import com.example.backend.Entity.User;
+import com.example.backend.Model.Entity.User;
 
 public class UserHolder {
     private static final ThreadLocal<User> userHolder = new ThreadLocal<>();

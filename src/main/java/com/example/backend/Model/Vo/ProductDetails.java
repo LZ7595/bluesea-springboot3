@@ -1,0 +1,26 @@
+package com.example.backend.Model.Vo;
+
+import com.example.backend.Model.Dto.ProductPromotionWrapper;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class ProductDetails {
+    private Long product_id;
+    private String product_name;
+    private String category_name;
+    private String brand_name;
+    private String product_description;
+    private BigDecimal price;
+    private BigDecimal bestPrice; // 最佳可用价格（新增）
+    private String quality;
+    private int stock;
+    private List<String> imageUrls;
+    private ProductPromotionWrapper promotionWrapper;
+}

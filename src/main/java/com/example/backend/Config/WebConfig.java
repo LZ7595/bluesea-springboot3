@@ -1,5 +1,6 @@
 package com.example.backend.Config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.ClientHttpRequestFactory;
@@ -10,6 +11,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 import com.example.backend.Utils.JwtInterceptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
@@ -36,10 +38,6 @@ public class WebConfig implements WebMvcConfigurer {
         // 允许所有子域名（如 *.example.com）
         // config.addAllowedOriginPattern("https://*.example.com");
 
-        // 方法2：多次调用addAllowedOrigin（不推荐，不支持通配符，且Spring新版本可能废弃）
-        // config.addAllowedOrigin("http://localhost:5173");
-        // config.addAllowedOrigin("https://your-production-domain.com");
-
         // 允许所有请求方法（GET/POST/PUT等）
         config.addAllowedMethod("*");
         // 允许所有请求头（包括自定义头，如Token）
@@ -61,6 +59,21 @@ public class WebConfig implements WebMvcConfigurer {
         return new RestTemplate(factory);
     }
 
+    @Value("${image.storage.directory}")
+    private String imageStorageDirectory;
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // 映射静态资源路径
+        registry.addResourceHandler("/static/**")
+                .addResourceLocations("file:" + imageStorageDirectory)
+                .setCachePeriod(3600);
+
+        // 如果需要，也可以添加classpath资源的映射
+        registry.addResourceHandler("/static/public/**")
+                .addResourceLocations("classpath:/static/")
+                .setCachePeriod(3600);
+    }
     @Bean
     public ClientHttpRequestFactory requestFactory() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -72,11 +85,11 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtInterceptor)
-                .addPathPatterns("/**")
+                .addPathPatterns("/address/**","/users/**","/message/**","/order/**","/shoppingCart/**")
                 .excludePathPatterns(
-                        "/auth/login",
-                        "/auth/register",
-                        "/auth/sendCode",
+                        "/express/**",
+                        "/back/**",
+                        "/auth/**",
                         "/public/**",
                         "/static/**",
                         "/product/**",

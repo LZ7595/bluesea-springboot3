@@ -1,6 +1,6 @@
 package com.example.backend.Service;
 
-import com.example.backend.Entity.CategoryBrandVO;
+import com.example.backend.Model.Vo.CategoryBrandVO;
 
 import java.util.List;
 

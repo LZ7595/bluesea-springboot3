@@ -66,7 +66,7 @@ public class JwtInterceptor implements HandlerInterceptor {
      * 根据客户端类型提取 AccessToken（适配前端不同传递方式）
      * - App端：从 Cookie 提取（前端将 fullCookie 放入 Cookie 头）
      * - H5端：从 Cookie 提取（浏览器自动携带 HttpOnly Cookie）
-     * - 小程序端：从 Authorization 头提取（格式：Bearer accessToken）
+     * - 小程序端：从 accessToken 头提取（格式：Bearer accessToken）
      */
     private String extractAccessTokenByClient(HttpServletRequest request) {
         // 1. 先获取客户端类型（默认按H5处理，避免空值）
@@ -84,13 +84,13 @@ public class JwtInterceptor implements HandlerInterceptor {
                 return getCookieValue(request, "accessToken");
 
             case CLIENT_MINIPROGRAM:
-                // 小程序：从 Authorization 头提取（格式：Bearer accessTokenValue）
-                String authHeader = request.getHeader("Authorization");
+                // 小程序：从 accessToken 头提取（格式：Bearer accessTokenValue）
+                String authHeader = request.getHeader("accessToken");
                 if (authHeader != null && authHeader.startsWith("Bearer ")) {
                     // 截取 "Bearer " 后面的 Token 部分（前端逻辑：refreshToken.split('=')[1] 取纯值）
                     return authHeader.substring(7).trim();
                 }
-                logger.warn("小程序端 Authorization 头格式错误，应为 Bearer {accessToken}");
+                logger.warn("小程序端 accessToken 头格式错误，应为 Bearer {accessToken}");
                 return null;
 
             default:
@@ -103,7 +103,7 @@ public class JwtInterceptor implements HandlerInterceptor {
      * 根据客户端类型提取 RefreshToken（适配前端不同传递方式）
      * - App端：从 Cookie 提取（前端将 refreshTokenCookie 放入 Cookie 头）
      * - H5端：从 Cookie 提取（浏览器自动携带 HttpOnly Cookie）
-     * - 小程序端：从 Authorization 头提取（前端传递的是 refreshToken=xxx 的值，需截取）
+     * - 小程序端：从 accessToken 头提取（前端传递的是 refreshToken=xxx 的值，需截取）
      */
     private String extractRefreshTokenByClient(HttpServletRequest request) {
         String clientType = request.getHeader(CLIENT_TYPE_HEADER);
@@ -181,15 +181,6 @@ public class JwtInterceptor implements HandlerInterceptor {
     }
 
     /**
-     * 将 Token 中的用户信息存入请求属性（原有方法保留）
-     */
-    private void setUserAttributes(HttpServletRequest request, String token) {
-        request.setAttribute("userId", jwt.getIdFromToken(token));
-        request.setAttribute("username", jwt.getUsernameFromToken(token));
-        request.setAttribute("role", jwt.getRoleFromToken(token));
-    }
-
-    /**
      * 处理未授权请求（原有方法保留，确保响应格式与前端一致）
      */
     private void handleUnauthorized(HttpServletResponse response) {
@@ -228,8 +219,6 @@ public class JwtInterceptor implements HandlerInterceptor {
 
         // 2. 验证 AccessToken 有效性（有效则直接放行，顺便处理续约）
         if (accessToken != null && jwt.validateAccessToken(accessToken)) {
-            setUserAttributes(request, accessToken); // 存入用户信息，供后续接口使用
-
             // 检查 AccessToken 是否即将过期（触发自动续约，仅 App/H5 需处理）
             if (jwt.isTokenAboutToExpire(accessToken, RENEW_THRESHOLD)) {
                 try {
@@ -253,7 +242,6 @@ public class JwtInterceptor implements HandlerInterceptor {
                 String newAccessToken = authService.refreshToken(refreshToken);
                 if (newAccessToken != null) {
                     updateAccessTokenByClient(response, request, newAccessToken); // 返回新Token给前端
-                    setUserAttributes(request, newAccessToken); // 存入新的用户信息
                     return true; // 刷新成功，放行请求
                 }
             } catch (Exception e) {

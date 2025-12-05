@@ -2,9 +2,11 @@ package com.example.backend.Impl.back;
 
 import com.example.backend.Dao.*;
 import com.example.backend.Dao.back.PromotionBackMapper;
-import com.example.backend.Entity.*;
-import com.example.backend.Entity.back.ProductInPromotion;
-import com.example.backend.Entity.back.PromotionBack;
+
+import com.example.backend.Model.Dto.PageResult;
+import com.example.backend.Model.Entity.ProductImage;
+import com.example.backend.Model.Entity.back.ProductInPromotion;
+import com.example.backend.Model.Entity.back.PromotionBack;
 import com.example.backend.Service.back.PromotionBackService;
 import com.example.backend.Utils.PromotionDiscountCalculator;
 import org.springframework.beans.factory.annotation.Autowired;

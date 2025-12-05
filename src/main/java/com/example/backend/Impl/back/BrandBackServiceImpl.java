@@ -1,8 +1,8 @@
 package com.example.backend.Impl.back;
 
 import com.example.backend.Dao.back.BrandBackMapper;
-import com.example.backend.Entity.Brand;
-import com.example.backend.Entity.BrandList;
+import com.example.backend.Model.Entity.Brand;
+import com.example.backend.Model.Vo.LabelList;
 import com.example.backend.Service.back.BrandBackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -75,7 +75,7 @@ public class BrandBackServiceImpl implements BrandBackService {
 //    }
 
     @Override
-    public List<BrandList> getSelectList(Long categoryId, String keyword){
+    public List<LabelList> getSelectList(Long categoryId, String keyword){
         return brandBackMapper.getBrandList(keyword,categoryId);
     }
 

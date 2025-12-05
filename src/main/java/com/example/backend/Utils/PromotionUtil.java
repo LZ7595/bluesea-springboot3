@@ -1,8 +1,8 @@
 package com.example.backend.Utils;
 
-import com.example.backend.Entity.ProductPromotion;
-import com.example.backend.Entity.ProductPromotionWrapper;
-import com.example.backend.Entity.UnusablePromotion;
+import com.example.backend.Model.Entity.ProductPromotion;
+import com.example.backend.Model.Dto.ProductPromotionWrapper;
+import com.example.backend.Model.Dto.UnusablePromotion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

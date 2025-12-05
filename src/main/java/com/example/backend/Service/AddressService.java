@@ -1,6 +1,6 @@
 package com.example.backend.Service;
 
-import com.example.backend.Entity.Address;
+import com.example.backend.Model.Entity.Address;
 
 import java.util.List;
 

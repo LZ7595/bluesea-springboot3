@@ -1,7 +1,7 @@
 package com.example.backend.Impl;
 
-import com.example.backend.Entity.PageResult;
-import com.example.backend.Entity.ProductReview;
+import com.example.backend.Model.Dto.PageResult;
+import com.example.backend.Model.Entity.ProductReview;
 import com.example.backend.Service.ReviewService;
 import com.example.backend.Dao.ReviewMapper;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,9 +1,8 @@
 package com.example.backend.Dao;
 
-import com.example.backend.Entity.Address;
-import com.example.backend.Entity.OrderDetail;
-import com.example.backend.Entity.Order;
-import com.example.backend.Entity.OrderDisplay;
+import com.example.backend.Model.Vo.OrderDetail;
+import com.example.backend.Model.Entity.Order;
+import com.example.backend.Model.Vo.OrderDisplay;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;

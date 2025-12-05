@@ -1,6 +1,6 @@
 package com.example.backend.Service.back;
 
-import com.example.backend.Entity.back.PromotionBack;
+import com.example.backend.Model.Entity.back.PromotionBack;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;

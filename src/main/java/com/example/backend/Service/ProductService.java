@@ -1,6 +1,8 @@
 package com.example.backend.Service;
 
-import com.example.backend.Entity.*;
+import com.example.backend.Model.Vo.ProductDetails;
+import com.example.backend.Model.Vo.ProductPayInfo;
+import com.example.backend.Model.Entity.ProductPromotion;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;

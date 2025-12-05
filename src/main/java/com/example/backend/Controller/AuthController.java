@@ -1,9 +1,13 @@
 package com.example.backend.Controller;
 
-import com.example.backend.Entity.Enum.ErrorType;
-import com.example.backend.Entity.Enum.LoginType;
-import com.example.backend.Entity.User;
+import com.example.backend.Model.Enum.ErrorType;
+import com.example.backend.Model.Enum.LoginType;
+import com.example.backend.Model.Entity.User;
+import com.example.backend.Model.Vo.IdentityVerifyRequest;
+import com.example.backend.Model.Vo.OperationExecuteRequest;
+import com.example.backend.Model.Vo.SendCodeRequest;
 import com.example.backend.Service.AuthService;
+import com.example.backend.Utils.Common;
 import com.example.backend.Utils.Jwt;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.Cookie;
@@ -23,18 +27,47 @@ public class AuthController {
     @Value("${jwt.access.expiration}")
     private long accessTokenExpirationTime;
 
+    @Autowired
+    private Common common;
     @Resource
     private Jwt jwt;
     @Autowired
     private AuthService authService;
 
-    @PostMapping("/sendCode")
-    public ResponseEntity<?> sendVerificationCode(@RequestParam String email, @RequestParam int type) {
-        System.out.println("接收到的email值为：" + email);
-        System.out.println("接收到的type值为：" + type);
-        return authService.sendVerificationCode(email, type);
+    /**
+     * 聚合接口：发送验证码
+     */
+    @PostMapping("/code/send")
+    public ResponseEntity<?> sendCode(@RequestBody SendCodeRequest request,HttpServletRequest servletRequest) {
+        return authService.sendCode(request,servletRequest);
     }
 
+    /**
+     * 第一步：身份验证
+     */
+    @PostMapping("/verify")
+    public ResponseEntity<?> verifyIdentity(@RequestBody IdentityVerifyRequest request, HttpServletRequest servletRequest) {
+        return authService.verifyIdentity(request, servletRequest);
+    }
+
+    /**
+     * 第二步：执行操作
+     */
+    @PostMapping("/execute")
+    public ResponseEntity<?> executeOperation(@RequestBody OperationExecuteRequest request, HttpServletRequest servletRequest) {
+        // 调试：打印请求头信息
+        common.debugRequestHeaders(servletRequest);
+        String accessToken = common.extractAccessTokenByClient(servletRequest);
+        System.out.println("accessToken111: " + accessToken);
+        return authService.executeOperation(request, servletRequest);
+    }
+    // 验证码相关接口
+    @PostMapping("/confirmChange")
+    public ResponseEntity<?> confirmChange(@RequestParam Integer userId, @RequestParam String info,
+                                           @RequestParam String code, @RequestParam String type,
+                                           @RequestParam Integer num) {
+        return authService.confirmChange(userId, info, code, type, num);
+    }
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody User user) {
         System.out.println("接收到的user值为：" + user);
@@ -69,8 +102,8 @@ public class AuthController {
 
         // 1. 根据客户端类型提取refreshToken
         if ("miniprogram".equals(clientType)) {
-            // 小程序：从Authorization头提取（格式：Bearer refreshToken=xxx）
-            String authHeader = request.getHeader("Authorization");
+            // 小程序：从refreshToken提取（格式：Bearer refreshToken=xxx）
+            String authHeader = request.getHeader("refreshToken");
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 refreshToken = authHeader.substring(7).trim();
             }
@@ -119,7 +152,7 @@ public class AuthController {
 
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(401).body(ErrorType.REFRESH_TOKEN_INVALID.toErrorResponse());
+            return ResponseEntity.status(404).body(ErrorType.REFRESH_TOKEN_INVALID.toErrorResponse());
         }
     }
 }

@@ -2,8 +2,8 @@ package com.example.backend.Impl.back;
 
 import com.example.backend.Dao.back.UserBackMapper;
 
-import com.example.backend.Entity.PageResult;
-import com.example.backend.Entity.back.UserDetailsBack;
+import com.example.backend.Model.Dto.PageResult;
+import com.example.backend.Model.Entity.back.UserDetailsBack;
 
 import com.example.backend.Service.back.UserBackService;
 

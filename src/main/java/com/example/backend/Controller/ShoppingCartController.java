@@ -1,7 +1,7 @@
 package com.example.backend.Controller;
 
-import com.example.backend.Entity.Selected;
-import com.example.backend.Entity.ShoppingCart;
+import com.example.backend.Model.Request.Selected;
+import com.example.backend.Model.Entity.ShoppingCart;
 import com.example.backend.Service.ShoppingCartService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

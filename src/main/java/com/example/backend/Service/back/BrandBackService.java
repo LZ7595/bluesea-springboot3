@@ -1,8 +1,7 @@
 package com.example.backend.Service.back;
 
-import com.example.backend.Entity.Brand;
-import com.example.backend.Entity.BrandList;
-import org.springframework.http.ResponseEntity;
+import com.example.backend.Model.Entity.Brand;
+import com.example.backend.Model.Vo.LabelList;
 
 import java.util.List;
 import java.util.Map;
@@ -21,5 +20,5 @@ public interface BrandBackService {
 
 //    List<BrandList> getSelectList(String keyword);
 
-    List<BrandList> getSelectList(Long categoryId, String keyword);
+    List<LabelList> getSelectList(Long categoryId, String keyword);
 }

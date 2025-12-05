@@ -1,7 +1,7 @@
 package com.example.backend.Utils;
 
-import com.example.backend.Entity.ProductPromotion;
-import com.example.backend.Entity.back.PromotionBack;
+import com.example.backend.Model.Entity.ProductPromotion;
+import com.example.backend.Model.Entity.back.PromotionBack;
 
 import java.math.BigDecimal;
 

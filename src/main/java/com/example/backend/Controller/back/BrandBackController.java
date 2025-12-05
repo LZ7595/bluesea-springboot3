@@ -1,7 +1,7 @@
 package com.example.backend.Controller.back;
 
-import com.example.backend.Entity.Brand;
-import com.example.backend.Entity.BrandList;
+import com.example.backend.Model.Entity.Brand;
+import com.example.backend.Model.Vo.LabelList;
 import com.example.backend.Service.back.BrandBackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -69,7 +69,7 @@ public class BrandBackController {
     }
 
     @GetMapping("/list")
-    public List<BrandList> getBrandList(@RequestParam(required = false) String keyword) {
+    public List<LabelList> getBrandList(@RequestParam(required = false) String keyword) {
         try {
             return brandBackService.getSelectList(null,keyword); // 服务层方法新增参数
         } catch (Exception e) {
@@ -78,7 +78,7 @@ public class BrandBackController {
     }
 
     @GetMapping("/list/{categoryId}")
-    public List<BrandList> getBrandListByCategoryId(@PathVariable Long categoryId, @RequestParam(required = false) String keyword) {
+    public List<LabelList> getBrandListByCategoryId(@PathVariable Long categoryId, @RequestParam(required = false) String keyword) {
         try {
             return brandBackService.getSelectList(categoryId, keyword); // 服务层方法新增参数
         } catch (Exception e) {

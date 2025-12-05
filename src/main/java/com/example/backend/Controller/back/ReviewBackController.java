@@ -1,6 +1,6 @@
 package com.example.backend.Controller.back;
 
-import com.example.backend.Entity.ProductReview;
+import com.example.backend.Model.Entity.ProductReview;
 import com.example.backend.Service.back.ReviewBackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

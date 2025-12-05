@@ -1,7 +1,7 @@
 package com.example.backend.Service.back;
 
-import com.example.backend.Entity.BrandList;
-import com.example.backend.Entity.Category;
+import com.example.backend.Model.Vo.LabelList;
+import com.example.backend.Model.Entity.Category;
 
 import java.util.List;
 import java.util.Map;
@@ -13,6 +13,6 @@ public interface CategoryBackService {
 
     int deleteCategory(Long category_id);
     int deleteCategoryMore(List<Long> categoryIdList);
-    List<BrandList> getSelectList(String keyword, Long brandId);
+    List<LabelList> getSelectList(String keyword, Long brandId);
 
 }

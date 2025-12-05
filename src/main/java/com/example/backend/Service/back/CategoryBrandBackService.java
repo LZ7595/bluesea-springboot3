@@ -1,6 +1,6 @@
 package com.example.backend.Service.back;
 
-import com.example.backend.Entity.CategoryBrand;
+import com.example.backend.Model.Entity.CategoryBrand;
 
 import java.util.List;
 import java.util.Map;

@@ -1,7 +1,7 @@
 package com.example.backend.Dao.back;
 
-import com.example.backend.Entity.OrderItem;
-import com.example.backend.Entity.back.OrderDetailsBack;
+import com.example.backend.Model.Entity.OrderItem;
+import com.example.backend.Model.Entity.back.OrderDetailsBack;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
@@ -39,6 +39,6 @@ public interface OrderBackMapper {
     @Select("SELECT * FROM `order_item` WHERE order_id = #{orderId}")
     List<OrderItem> getOrderItemsByOrderId(Long orderId);
 
-    @Update("UPDATE `order` SET order_status = 'SHIPPED', express = #{express}, express_time = NOW() WHERE order_id = #{orderId}")
-    int ShipOrder(Long orderId, String express);
+    @Update("UPDATE `order` SET order_status = 'SHIPPED', express_num = #{express_num}, express_id = #{express_id} express_time = NOW() WHERE order_id = #{orderId}")
+    int ShipOrder(Long orderId, int express_id,String express_num);
 }

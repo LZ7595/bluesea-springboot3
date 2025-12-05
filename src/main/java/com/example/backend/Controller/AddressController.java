@@ -1,6 +1,6 @@
 package com.example.backend.Controller;
 
-import com.example.backend.Entity.Address;
+import com.example.backend.Model.Entity.Address;
 import com.example.backend.Service.AddressService;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,6 +1,6 @@
 package com.example.backend.Service.back;
 
-import com.example.backend.Entity.back.OrderDetailsBack;
+import com.example.backend.Model.Entity.back.OrderDetailsBack;
 import org.springframework.http.ResponseEntity;
 
 
@@ -10,7 +10,7 @@ public interface OrderBackService {
 
     ResponseEntity<OrderDetailsBack> getOrderDetailsBack(Long orderId);
 
-    ResponseEntity<?> ShipOrder(Long orderId,String express);
+    ResponseEntity<?> ShipOrder(Long orderId, int express_id ,String express_num);
 
 //    int updateOrder(OrderDetailsBack product);
 }

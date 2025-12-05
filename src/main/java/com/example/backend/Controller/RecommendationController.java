@@ -1,8 +1,7 @@
 package com.example.backend.Controller;
 
-import com.example.backend.Entity.PageResult;
-import com.example.backend.Entity.Product;
-import com.example.backend.Entity.ProductResponse;
+import com.example.backend.Model.Dto.PageResult;
+import com.example.backend.Model.Response.ProductResponse;
 import com.example.backend.Service.RecommendationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

@@ -1,7 +1,7 @@
 package com.example.backend.Dao.back;
 
-import com.example.backend.Entity.BrandList;
-import com.example.backend.Entity.Category;
+import com.example.backend.Model.Vo.LabelList;
+import com.example.backend.Model.Entity.Category;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
@@ -57,5 +57,5 @@ public interface CategoryBackMapper {
             "</where>" +
             "ORDER BY c.category_id ASC " +
             "</script>")
-    List<BrandList> getCategoryList(@Param("keyword") String keyword,@Param("brandId") Long brandId);
+    List<LabelList> getCategoryList(@Param("keyword") String keyword, @Param("brandId") Long brandId);
 }

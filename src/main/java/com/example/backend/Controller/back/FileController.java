@@ -168,6 +168,31 @@ public class FileController {
         return String.join(",", imageUrls);
     }
 
+    @PostMapping("/back/express/upload")
+    public String uploadExpressFiles(@RequestParam("file") MultipartFile[] files) {
+        System.out.println("Received files: " + files);
+        List<String> imageUrls = new ArrayList<>();
+
+        for (MultipartFile file : files) {
+            if (file.isEmpty()) {
+                continue;
+            }
+            // 生成唯一文件名
+            String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+            String Path = filePath + "express/" + fileName;
+            File dest = new File(Path);
+            String fileUrl = "/express/" + fileName;
+
+            try {
+                file.transferTo(dest);
+                imageUrls.add(fileUrl);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return String.join(",", imageUrls);
+    }
+
     @PostMapping("/avatar/upload")
     public String uploadAvatarFiles(@RequestParam("file") MultipartFile[] files) {
         System.out.println("Received files: " + files);

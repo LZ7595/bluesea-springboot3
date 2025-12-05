@@ -1,6 +1,9 @@
 package com.example.backend.Dao;
 
-import com.example.backend.Entity.*;
+import com.example.backend.Model.Entity.Product;
+import com.example.backend.Model.Vo.ProductPayInfo;
+import com.example.backend.Model.Entity.ProductPromotion;
+import com.example.backend.Model.Dto.PromotionUsedCountDTO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;

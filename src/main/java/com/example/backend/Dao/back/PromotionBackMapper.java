@@ -1,7 +1,7 @@
 package com.example.backend.Dao.back;
 
-import com.example.backend.Entity.back.ProductInPromotion;
-import com.example.backend.Entity.back.PromotionBack;
+import com.example.backend.Model.Entity.back.ProductInPromotion;
+import com.example.backend.Model.Entity.back.PromotionBack;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
